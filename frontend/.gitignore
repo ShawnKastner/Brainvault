@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.cjs
+
+# Angular build and cache output
+dist/
+.angular/cache/
+tmp/
+out-tsc/
+bazel-out/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Runtime and tool caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+.eslintcache
+.sass-cache/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
