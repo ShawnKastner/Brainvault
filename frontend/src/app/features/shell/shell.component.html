@@ -41,11 +41,6 @@
             <option [value]="space.id">{{ space.name }}</option>
           }
         </select>
-        <select class="new-page-select" formControlName="contentFormat">
-          @for (format of contentFormats; track format.value) {
-            <option [ngValue]="format.value">{{ format.label }}</option>
-          }
-        </select>
         <button type="submit" class="button primary" [disabled]="store.saving() || newPageForm.invalid">
           Erstellen
         </button>

@@ -1,41 +1,98 @@
 <form class="page-editor" [formGroup]="form" (ngSubmit)="submit()">
-  <label class="field-label" for="page-title">Titel</label>
-  <input id="page-title" class="field-input" formControlName="title" placeholder="Seitentitel..." />
+  <input id="page-title" class="title-input" formControlName="title" placeholder="Unbenannte Seite" />
   @if (form.controls.title.touched && form.controls.title.hasError('required')) {
     <p class="field-error">Der Titel ist erforderlich.</p>
   }
 
-  <label class="field-label" for="page-description">Beschreibung</label>
   <input
     id="page-description"
-    class="field-input"
+    class="description-input"
     formControlName="description"
-    placeholder="Kurze Beschreibung..."
+    placeholder="Kurze Zusammenfassung, Kontext oder Ziel der Seite..."
   />
 
-  <label class="field-label" for="page-format">Format</label>
-  <select id="page-format" class="field-input field-select" formControlName="contentFormat">
-    @for (format of contentFormats; track format.value) {
-      <option [ngValue]="format.value">{{ format.label }}</option>
-    }
-  </select>
+  <div class="editor-toolbar" role="toolbar" aria-label="Formatierung">
+    <div class="toolbar-group" aria-label="Textstil">
+      <button type="button" class="tool-button" [class.active]="!isActive('heading')" (click)="setParagraph()">
+        Text
+      </button>
+      <button type="button" class="tool-button" [class.active]="isHeading(1)" (click)="toggleHeading(1)">
+        H1
+      </button>
+      <button type="button" class="tool-button" [class.active]="isHeading(2)" (click)="toggleHeading(2)">
+        H2
+      </button>
+      <button type="button" class="tool-button" [class.active]="isHeading(3)" (click)="toggleHeading(3)">
+        H3
+      </button>
+    </div>
 
-  <label class="field-label" for="page-content">
-    Inhalt ({{ form.controls.contentFormat.value === 'markdown' ? 'Markdown' : 'HTML' }})
-  </label>
-  <textarea
-    id="page-content"
-    class="field-textarea"
-    formControlName="content"
-    [placeholder]="contentPlaceholder()"
-  ></textarea>
+    <div class="toolbar-group" aria-label="Inline-Formatierung">
+      <button type="button" class="tool-button strong" [class.active]="isActive('bold')" (click)="toggleBold()">
+        B
+      </button>
+      <button type="button" class="tool-button italic" [class.active]="isActive('italic')" (click)="toggleItalic()">
+        I
+      </button>
+      <button type="button" class="tool-button mono" [class.active]="isActive('code')" (click)="toggleCode()">
+        Code
+      </button>
+      <button type="button" class="tool-button" [class.active]="isActive('link')" (click)="setLink()">
+        Link
+      </button>
+    </div>
 
-  <label class="field-label" for="page-tags">Tags</label>
+    <div class="toolbar-group" aria-label="Bloecke">
+      <button
+        type="button"
+        class="tool-button"
+        [class.active]="isActive('bulletList')"
+        (click)="toggleBulletList()"
+      >
+        Liste
+      </button>
+      <button
+        type="button"
+        class="tool-button"
+        [class.active]="isActive('orderedList')"
+        (click)="toggleOrderedList()"
+      >
+        1. Liste
+      </button>
+      <button type="button" class="tool-button" [class.active]="isActive('blockquote')" (click)="toggleBlockquote()">
+        Zitat
+      </button>
+      <button type="button" class="tool-button" [class.active]="isActive('codeBlock')" (click)="toggleCodeBlock()">
+        Codeblock
+      </button>
+    </div>
+
+    <div class="toolbar-group" aria-label="Tabelle">
+      <button type="button" class="tool-button" (click)="insertTable()">Tabelle</button>
+      <button type="button" class="tool-button" [disabled]="!isTableActive()" (click)="addTableRow()">
+        Zeile +
+      </button>
+      <button type="button" class="tool-button" [disabled]="!isTableActive()" (click)="addTableColumn()">
+        Spalte +
+      </button>
+      <button type="button" class="tool-button danger" [disabled]="!isTableActive()" (click)="deleteTable()">
+        Entfernen
+      </button>
+    </div>
+
+    <div class="toolbar-group" aria-label="Verlauf">
+      <button type="button" class="tool-button" [disabled]="!canUndo()" (click)="undo()">Rueckgaengig</button>
+      <button type="button" class="tool-button" [disabled]="!canRedo()" (click)="redo()">Wiederholen</button>
+    </div>
+  </div>
+
+  <div #editorHost id="page-content" class="editor-surface"></div>
+
   <input
     id="page-tags"
-    class="field-input"
+    class="tags-input"
     formControlName="tags"
-    placeholder="nestjs, backend, typescript"
+    placeholder="Tags: nestjs, backend, typescript"
   />
 
   <div class="editor-actions">

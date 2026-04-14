@@ -1,54 +1,295 @@
 .page-editor {
   display: flex;
   flex-direction: column;
-  max-width: 52rem;
+  max-width: 58rem;
   padding: 2rem 3rem 3.75rem;
 }
 
-.field-label {
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  margin: 1.125rem 0 0.35rem;
-  text-transform: uppercase;
-}
-
-.field-input,
-.field-textarea {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+.title-input,
+.description-input,
+.tags-input {
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   color: var(--color-text);
-  font-family: var(--font-sans);
   outline: none;
-  padding: 0.65rem 0.75rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
   width: 100%;
 }
 
-.field-input:focus,
-.field-textarea:focus {
+.title-input:focus,
+.description-input:focus,
+.tags-input:focus {
+  background: var(--color-surface);
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-accent-ring);
 }
 
-.field-select {
-  cursor: pointer;
+.title-input {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0.4rem;
+  padding: 0.25rem 0.35rem;
 }
 
-.field-textarea {
+.description-input,
+.tags-input {
+  color: var(--color-text-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  padding: 0.45rem 0.35rem;
+}
+
+.description-input {
+  margin-bottom: 1.25rem;
+}
+
+.editor-toolbar {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  border-bottom: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 -0.35rem;
+  padding: 0.55rem 0.35rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.toolbar-group {
+  align-items: center;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-right: 0.45rem;
+}
+
+.toolbar-group:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.tool-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-soft);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 650;
+  min-height: 1.9rem;
+  padding: 0.3rem 0.55rem;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.tool-button:hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+}
+
+.tool-button.active {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.tool-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.tool-button.strong {
+  font-weight: 800;
+}
+
+.tool-button.italic {
+  font-style: italic;
+}
+
+.tool-button.mono {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  line-height: 1.7;
-  min-height: 22rem;
-  resize: vertical;
+}
+
+.tool-button.danger {
+  color: var(--color-danger);
+}
+
+.editor-surface {
+  min-height: 28rem;
+}
+
+.page-editor .editor-document {
+  color: var(--color-text);
+  font-size: 0.98rem;
+  line-height: 1.75;
+  min-height: 28rem;
+  outline: none;
+  padding: 1.4rem 0.35rem 1rem;
+  word-break: break-word;
+}
+
+.page-editor .editor-document > *:first-child {
+  margin-top: 0;
+}
+
+.page-editor .editor-document p {
+  color: var(--color-text-soft);
+  margin: 0 0 0.85rem;
+}
+
+.page-editor .editor-document h1,
+.page-editor .editor-document h2,
+.page-editor .editor-document h3 {
+  color: var(--color-text);
+  font-weight: 650;
+  line-height: 1.25;
+  margin: 1.45rem 0 0.65rem;
+}
+
+.page-editor .editor-document h1 {
+  font-size: 1.65rem;
+}
+
+.page-editor .editor-document h2 {
+  border-bottom: 1px solid var(--color-border);
+  font-size: 1.25rem;
+  padding-bottom: 0.35rem;
+}
+
+.page-editor .editor-document h3 {
+  font-size: 1rem;
+}
+
+.page-editor .editor-document ul,
+.page-editor .editor-document ol {
+  margin: 0 0 0.85rem;
+  padding-left: 1.35rem;
+}
+
+.page-editor .editor-document li {
+  color: var(--color-text-soft);
+  margin-bottom: 0.25rem;
+  padding-left: 0.1rem;
+}
+
+.page-editor .editor-document blockquote {
+  background: var(--color-accent-soft);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text);
+  margin: 1rem 0;
+  padding: 0.65rem 0.9rem;
+}
+
+.page-editor .editor-document code {
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  padding: 0.12rem 0.35rem;
+}
+
+.page-editor .editor-document pre {
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: 1rem 0;
+  overflow-x: auto;
+  padding: 0.9rem 1rem;
+}
+
+.page-editor .editor-document pre code {
+  background: transparent;
+  border: 0;
+  display: block;
+  padding: 0;
+}
+
+.page-editor .editor-document a {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.16rem;
+}
+
+.page-editor .tableWrapper {
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.page-editor .editor-document table {
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  min-width: 24rem;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.page-editor .editor-document th,
+.page-editor .editor-document td {
+  border: 1px solid var(--color-border);
+  min-width: 6rem;
+  padding: 0.5rem 0.65rem;
+  position: relative;
+  text-align: left;
+  vertical-align: top;
+}
+
+.page-editor .editor-document th {
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.page-editor .editor-document .selectedCell::after {
+  background: var(--color-accent-ring);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.page-editor .editor-document .column-resize-handle {
+  background: var(--color-accent);
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 3px;
+}
+
+.page-editor .editor-document p.is-editor-empty:first-child::before {
+  color: var(--color-text-muted);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tags-input {
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  margin-top: 1.25rem;
+  padding-top: 0.85rem;
 }
 
 .field-error {
   color: var(--color-danger);
   font-size: 0.78rem;
-  margin: 0.35rem 0 0;
+  margin: 0.15rem 0 0.8rem;
 }
 
 .editor-actions {
@@ -63,6 +304,21 @@
 @media (max-width: 760px) {
   .page-editor {
     padding: 1.5rem 1.25rem 2.5rem;
+  }
+
+  .title-input {
+    font-size: 1.65rem;
+  }
+
+  .editor-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    position: static;
+  }
+
+  .toolbar-group {
+    border-right: 0;
+    padding-right: 0;
   }
 
   .editor-actions {

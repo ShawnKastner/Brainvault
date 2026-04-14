@@ -9,7 +9,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { PageContentFormat, UpdatePageRequest } from '../../core/models/page.model';
+import type { UpdatePageRequest } from '../../core/models/page.model';
 import type { CreateSpaceRequest } from '../../core/models/space.model';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
 import { PageEditorComponent } from '../pages/components/page-editor/page-editor.component';
@@ -42,15 +42,10 @@ export class ShellComponent {
   protected readonly openSpaces = signal<Partial<Record<string, boolean>>>({});
   protected readonly editMode = signal(false);
   protected readonly showNewPage = signal(false);
-  protected readonly contentFormats: { value: PageContentFormat; label: string }[] = [
-    { value: 'markdown', label: 'Markdown' },
-    { value: 'html', label: 'HTML' },
-  ];
 
   protected readonly newPageForm = this.formBuilder.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
     spaceId: ['', Validators.required],
-    contentFormat: this.formBuilder.control<PageContentFormat>('markdown', Validators.required),
   });
 
   @ViewChild(PageEditorComponent) private pageEditor?: PageEditorComponent;
@@ -103,14 +98,13 @@ export class ShellComponent {
       {
         title: value.title.trim(),
         spaceId: value.spaceId,
-        contentFormat: value.contentFormat,
+        contentFormat: 'html',
       },
       (page) => {
         this.showNewPage.set(false);
         this.newPageForm.reset({
           title: '',
           spaceId: value.spaceId,
-          contentFormat: 'markdown',
         });
         this.editMode.set(true);
         void this.router.navigate(['/pages', page.id]);
