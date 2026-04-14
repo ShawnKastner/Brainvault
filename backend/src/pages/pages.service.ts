@@ -25,7 +25,11 @@ export class PagesService {
   }
 
   async create(dto: CreatePageDto): Promise<Page> {
-    const page = this.pagesRepo.create({ ...dto, tags: dto.tags ?? [] });
+    const page = this.pagesRepo.create({
+      ...dto,
+      contentFormat: dto.contentFormat ?? 'html',
+      tags: dto.tags ?? [],
+    });
     return this.pagesRepo.save(page);
   }
 

@@ -5,6 +5,9 @@ import {
 } from 'typeorm';
 import { Space } from '../spaces/space.entity';
 
+export const PAGE_CONTENT_FORMATS = ['html', 'markdown'] as const;
+export type PageContentFormat = (typeof PAGE_CONTENT_FORMATS)[number];
+
 @Entity('pages')
 export class Page {
   @PrimaryGeneratedColumn('uuid')
@@ -18,6 +21,9 @@ export class Page {
 
   @Column({ type: 'text', nullable: true })
   content: string | null;
+
+  @Column({ length: 20, default: 'html' })
+  contentFormat: PageContentFormat;
 
   @Column('text', { array: true, default: '{}' })
   tags: string[];

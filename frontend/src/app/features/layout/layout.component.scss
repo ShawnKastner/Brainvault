@@ -604,6 +604,10 @@
   &:focus { border-color: var(--amber); }
 }
 
+.field-select {
+  cursor: pointer;
+}
+
 .field-textarea {
   width: 100%;
   min-height: 340px;

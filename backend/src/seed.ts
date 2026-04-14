@@ -25,20 +25,30 @@ async function seed(): Promise<void> {
     pRepo.create({
       title: 'NestJS Architektur', spaceId: dev.id, sortOrder: 0,
       description: 'Bewaehlte Patterns fuer skalierbare NestJS-Backends.',
-      content: '<h2>Modulstruktur</h2><p>Jedes Feature lebt in einem eigenen Modul. Das Modul importiert nur, was es braucht.</p><pre><code>@Module({\n  imports: [TypeOrmModule.forFeature([UserEntity])],\n  controllers: [UserController],\n  providers: [UserService],\n})</code></pre>',
+      contentFormat: 'markdown',
+      content: '## Modulstruktur\n\nJedes Feature lebt in einem eigenen Modul. Das Modul importiert nur, was es braucht.\n\n```ts\n@Module({\n  imports: [TypeOrmModule.forFeature([UserEntity])],\n  controllers: [UserController],\n  providers: [UserService],\n})\n```',
       tags: ['nestjs', 'backend', 'typescript'],
     }),
     pRepo.create({
       title: 'Angular 19 Patterns', spaceId: dev.id, sortOrder: 1,
       description: 'Template-Syntax, Signals und neue Control Flow.',
-      content: '<h2>Neue Template-Syntax</h2><p>Seit Angular 17 gibt es den neuen Control Flow. <code>*ngFor</code> und <code>*ngIf</code> sind deprecated.</p><h2>Signals</h2><p>Signals ersetzen langfristig RxJS fuer einfaches State Management.</p>',
+      contentFormat: 'markdown',
+      content: '## Neue Template-Syntax\n\nSeit Angular 17 gibt es den neuen Control Flow. `*ngFor` und `*ngIf` sind deprecated.\n\n## Signals\n\nSignals ersetzen langfristig RxJS fuer einfaches State Management.',
       tags: ['angular', 'frontend', 'signals'],
     }),
     pRepo.create({
       title: 'Docker Cheatsheet', spaceId: dev.id, sortOrder: 2,
       description: 'Die wichtigsten Docker-Befehle auf einen Blick.',
-      content: '<h2>Haeufige Befehle</h2><pre><code>docker compose up -d --build\ndocker compose logs -f [service]\ndocker exec -it [container] sh\ndocker system prune -af</code></pre>',
+      contentFormat: 'markdown',
+      content: '## Haeufige Befehle\n\n```bash\ndocker compose up -d --build\ndocker compose logs -f [service]\ndocker exec -it [container] sh\ndocker system prune -af\n```',
       tags: ['docker', 'devops'],
+    }),
+    pRepo.create({
+      title: 'Markdown Notizen', spaceId: dev.id, sortOrder: 3,
+      description: 'Beispielseite fuer Markdown-Inhalte.',
+      contentFormat: 'markdown',
+      content: "## Markdown Grundlagen\n\nMarkdown rendert **fetten Text**, Listen und `Inline-Code`.\n\n- Schnell zu schreiben\n- Gut fuer technische Notizen\n- Wird erst im Frontend gerendert\n\n```ts\nconst format = 'markdown';\n```\n\n> HTML entsteht erst in der Ansicht.",
+      tags: ['markdown', 'notes'],
     }),
   ]);
 
@@ -48,7 +58,8 @@ async function seed(): Promise<void> {
     pRepo.create({
       title: 'Homeserver Setup', spaceId: devops.id, sortOrder: 0,
       description: 'Dokumentation des Homeserver-Setups.',
-      content: '<h2>Hardware</h2><p>Mini-PC mit 32 GB RAM, 2 TB NVMe, Ubuntu Server 24.04 LTS.</p><h2>Dienste</h2><p>Alle Services laufen in Docker Compose. Traefik als Reverse Proxy.</p><blockquote>BrainVault, Gitea, Uptime Kuma, Paperless-ngx, Vaultwarden</blockquote>',
+      contentFormat: 'markdown',
+      content: '## Hardware\n\nMini-PC mit 32 GB RAM, 2 TB NVMe, Ubuntu Server 24.04 LTS.\n\n## Dienste\n\nAlle Services laufen in Docker Compose. Traefik als Reverse Proxy.\n\n> BrainVault, Gitea, Uptime Kuma, Paperless-ngx, Vaultwarden',
       tags: ['homeserver', 'ubuntu', 'selfhosted'],
     }),
   ]);

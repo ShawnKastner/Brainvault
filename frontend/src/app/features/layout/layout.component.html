@@ -135,6 +135,11 @@
             <option [value]="space.id">{{ space.name }}</option>
           }
         </select>
+        <select [(ngModel)]="newPageContentFormat" class="np-select">
+          @for (format of contentFormats; track format.value) {
+            <option [ngValue]="format.value">{{ format.label }}</option>
+          }
+        </select>
         <button class="tb-btn primary" (click)="createPage()">Erstellen</button>
         <button class="tb-btn" (click)="showNewPage.set(false)">×</button>
       </div>
@@ -194,10 +199,16 @@
           <input class="field-input" [(ngModel)]="editDescription"
                  placeholder="Kurze Beschreibung…" />
 
-          <label class="field-label">Inhalt (HTML)</label>
+          <label class="field-label">Format</label>
+          <select class="field-input field-select" [(ngModel)]="editContentFormat">
+            @for (format of contentFormats; track format.value) {
+              <option [ngValue]="format.value">{{ format.label }}</option>
+            }
+          </select>
+
+          <label class="field-label">Inhalt ({{ contentFormatLabel(editContentFormat) }})</label>
           <textarea class="field-textarea" [(ngModel)]="editContent"
-                    placeholder="&lt;h2&gt;Überschrift&lt;/h2&gt;&#10;&lt;p&gt;Inhalt…&lt;/p&gt;">
-          </textarea>
+                    [placeholder]="contentPlaceholder()"></textarea>
 
           <label class="field-label">Tags (kommagetrennt)</label>
           <input class="field-input" [(ngModel)]="editTags"

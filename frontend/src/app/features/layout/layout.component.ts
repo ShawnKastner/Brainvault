@@ -1,11 +1,12 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import { SpacesService } from '../../core/services/spaces.service';
 import { PagesService } from '../../core/services/pages.service';
 import type { SpaceWithPages } from '../../core/models/space.model';
-import type { Page, UpdatePageDto } from '../../core/models/page.model';
+import type { Page, PageContentFormat, UpdatePageDto } from '../../core/models/page.model';
 
 @Component({
   selector: 'bv-layout',
@@ -17,7 +18,11 @@ import type { Page, UpdatePageDto } from '../../core/models/page.model';
 export class LayoutComponent implements OnInit {
   private spacesService = inject(SpacesService);
   private pagesService = inject(PagesService);
-  private sanitizer = inject(DomSanitizer);
+
+  readonly contentFormats: { value: PageContentFormat; label: string }[] = [
+    { value: 'markdown', label: 'Markdown' },
+    { value: 'html', label: 'HTML' },
+  ];
 
   // ── Reactive state (signals) ──────────────────────────────────
   spaces        = signal<SpaceWithPages[]>([]);
@@ -35,20 +40,27 @@ export class LayoutComponent implements OnInit {
     return this.spaces().find((s) => s.id === page.spaceId) ?? null;
   });
 
-  safeContent = computed((): SafeHtml => {
+  safeContent = computed((): string => {
     const page = this.activePage();
-    const html = page?.content ?? '';
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    if (!page?.content) return '';
+
+    const html = this.getPageContentFormat(page) === 'markdown'
+      ? marked.parse(page.content, { async: false })
+      : page.content;
+
+    return DOMPurify.sanitize(html);
   });
 
   // ── Form fields (plain props for ngModel) ─────────────────────
   editTitle       = '';
   editDescription = '';
   editContent     = '';
+  editContentFormat: PageContentFormat = 'html';
   editTags        = '';
 
   newPageTitle   = '';
   newPageSpaceId = '';
+  newPageContentFormat: PageContentFormat = 'markdown';
 
   newSpaceName  = '';
   newSpaceColor = '#378ADD';
@@ -91,6 +103,7 @@ export class LayoutComponent implements OnInit {
     this.editTitle       = page.title;
     this.editDescription = page.description ?? '';
     this.editContent     = page.content ?? '';
+    this.editContentFormat = this.getPageContentFormat(page);
     this.editTags        = page.tags.join(', ');
     this.editMode.set(true);
   }
@@ -107,6 +120,7 @@ export class LayoutComponent implements OnInit {
       title:       this.editTitle,
       description: this.editDescription || undefined,
       content:     this.editContent || undefined,
+      contentFormat: this.editContentFormat,
       tags:        this.editTags.split(',').map((t) => t.trim()).filter((t) => t.length > 0),
     };
     this.pagesService.update(page.id, dto).subscribe({
@@ -132,9 +146,10 @@ export class LayoutComponent implements OnInit {
     const title   = this.newPageTitle.trim();
     const spaceId = this.newPageSpaceId;
     if (!title || !spaceId) return;
-    this.pagesService.create({ title, spaceId }).subscribe({
+    this.pagesService.create({ title, spaceId, contentFormat: this.newPageContentFormat }).subscribe({
       next: (page) => {
         this.newPageTitle = '';
+        this.newPageContentFormat = 'markdown';
         this.showNewPage.set(false);
         this.loadSpaces();
         this.activePage.set(page);
@@ -159,5 +174,19 @@ export class LayoutComponent implements OnInit {
     return new Date(dateStr).toLocaleDateString('de-DE', {
       day: '2-digit', month: '2-digit', year: 'numeric',
     });
+  }
+
+  contentFormatLabel(format: PageContentFormat): string {
+    return format === 'markdown' ? 'Markdown' : 'HTML';
+  }
+
+  contentPlaceholder(): string {
+    return this.editContentFormat === 'markdown'
+      ? '## Überschrift\n\nInhalt mit **Markdown**, Listen und `Code`.'
+      : '<h2>Überschrift</h2>\n<p>Inhalt…</p>';
+  }
+
+  private getPageContentFormat(page: Page): PageContentFormat {
+    return page.contentFormat === 'markdown' ? 'markdown' : 'html';
   }
 }
