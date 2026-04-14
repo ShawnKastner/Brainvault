@@ -1,0 +1,36 @@
+<article class="page-view">
+  <div class="page-meta">
+    @if (space(); as activeSpace) {
+      <span
+        class="space-badge"
+        [style.background]="activeSpace.color + '18'"
+        [style.border-color]="activeSpace.color + '55'"
+      >
+        {{ activeSpace.name }}
+      </span>
+    }
+    <span class="page-updated">{{ formatDate(page().updatedAt) }}</span>
+  </div>
+
+  <h1 class="page-title">{{ page().title }}</h1>
+
+  @if (page().description) {
+    <p class="page-desc">{{ page().description }}</p>
+  }
+
+  @if (page().content) {
+    <div class="page-body" [innerHTML]="page() | pageContent"></div>
+  } @else {
+    <div class="page-empty">
+      Noch kein Inhalt. Klicke auf <strong>Bearbeiten</strong>, um loszulegen.
+    </div>
+  }
+
+  @if (page().tags.length > 0) {
+    <div class="tags-row">
+      @for (tag of page().tags; track tag) {
+        <span class="tag">{{ tag }}</span>
+      }
+    </div>
+  }
+</article>

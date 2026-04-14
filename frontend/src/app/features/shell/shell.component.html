@@ -1,0 +1,76 @@
+<div class="app-shell">
+  <bv-sidebar
+    [spaces]="store.filteredSpaces()"
+    [loading]="store.loading()"
+    [saving]="store.saving()"
+    [openSpaces]="openSpaces()"
+    [activePageId]="store.activePageId()"
+    [searchQuery]="store.searchQuery()"
+    (toggleSpace)="toggleSpace($event)"
+    (selectPage)="selectPage($event)"
+    (searchQueryChange)="store.setSearchQuery($event)"
+    (createSpace)="createSpace($event)"
+  />
+
+  <main class="main">
+    <bv-topbar
+      [activeSpace]="store.activeSpace()"
+      [activePage]="store.activePage()"
+      [editMode]="editMode()"
+      [saving]="store.saving()"
+      (showCreatePage)="showNewPage.set(!showNewPage())"
+      (startEdit)="editMode.set(true)"
+      (deletePage)="deleteActivePage()"
+      (cancelEdit)="editMode.set(false)"
+      (savePage)="savePageFromTopbar()"
+    />
+
+    @if (store.error(); as error) {
+      <div class="app-alert" role="alert">
+        <span>{{ error }}</span>
+        <button type="button" class="button" (click)="store.dismissError()">Schliessen</button>
+      </div>
+    }
+
+    @if (showNewPage()) {
+      <form class="new-page-bar" [formGroup]="newPageForm" (ngSubmit)="submitNewPage()">
+        <input class="new-page-input" formControlName="title" placeholder="Titel der neuen Seite..." />
+        <select class="new-page-select" formControlName="spaceId">
+          <option value="" disabled>Space waehlen...</option>
+          @for (space of store.spaces(); track space.id) {
+            <option [value]="space.id">{{ space.name }}</option>
+          }
+        </select>
+        <select class="new-page-select" formControlName="contentFormat">
+          @for (format of contentFormats; track format.value) {
+            <option [ngValue]="format.value">{{ format.label }}</option>
+          }
+        </select>
+        <button type="submit" class="button primary" [disabled]="store.saving() || newPageForm.invalid">
+          Erstellen
+        </button>
+        <button type="button" class="button" (click)="showNewPage.set(false)">Schliessen</button>
+      </form>
+    }
+
+    <section class="content">
+      @if (store.activePage(); as page) {
+        @if (editMode()) {
+          <bv-page-editor
+            [page]="page"
+            [saving]="store.saving()"
+            (save)="savePage($event)"
+            (cancel)="editMode.set(false)"
+          />
+        } @else {
+          <bv-page-view [page]="page" [space]="store.activeSpace()" />
+        }
+      } @else if (!store.loading()) {
+        <bv-empty-state
+          title="Waehle eine Seite aus der Navigation"
+          description="oder erstelle eine neue Seite."
+        />
+      }
+    </section>
+  </main>
+</div>

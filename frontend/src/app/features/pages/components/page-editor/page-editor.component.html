@@ -1,0 +1,47 @@
+<form class="page-editor" [formGroup]="form" (ngSubmit)="submit()">
+  <label class="field-label" for="page-title">Titel</label>
+  <input id="page-title" class="field-input" formControlName="title" placeholder="Seitentitel..." />
+  @if (form.controls.title.touched && form.controls.title.hasError('required')) {
+    <p class="field-error">Der Titel ist erforderlich.</p>
+  }
+
+  <label class="field-label" for="page-description">Beschreibung</label>
+  <input
+    id="page-description"
+    class="field-input"
+    formControlName="description"
+    placeholder="Kurze Beschreibung..."
+  />
+
+  <label class="field-label" for="page-format">Format</label>
+  <select id="page-format" class="field-input field-select" formControlName="contentFormat">
+    @for (format of contentFormats; track format.value) {
+      <option [ngValue]="format.value">{{ format.label }}</option>
+    }
+  </select>
+
+  <label class="field-label" for="page-content">
+    Inhalt ({{ form.controls.contentFormat.value === 'markdown' ? 'Markdown' : 'HTML' }})
+  </label>
+  <textarea
+    id="page-content"
+    class="field-textarea"
+    formControlName="content"
+    [placeholder]="contentPlaceholder()"
+  ></textarea>
+
+  <label class="field-label" for="page-tags">Tags</label>
+  <input
+    id="page-tags"
+    class="field-input"
+    formControlName="tags"
+    placeholder="nestjs, backend, typescript"
+  />
+
+  <div class="editor-actions">
+    <button type="button" class="button" (click)="cancel.emit()">Abbrechen</button>
+    <button type="submit" class="button primary" [disabled]="saving() || form.invalid">
+      {{ saving() ? 'Speichert...' : 'Speichern' }}
+    </button>
+  </div>
+</form>

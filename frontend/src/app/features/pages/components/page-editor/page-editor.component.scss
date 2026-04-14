@@ -1,0 +1,75 @@
+.page-editor {
+  display: flex;
+  flex-direction: column;
+  max-width: 52rem;
+  padding: 2rem 3rem 3.75rem;
+}
+
+.field-label {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 1.125rem 0 0.35rem;
+  text-transform: uppercase;
+}
+
+.field-input,
+.field-textarea {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  outline: none;
+  padding: 0.65rem 0.75rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+
+.field-input:focus,
+.field-textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-ring);
+}
+
+.field-select {
+  cursor: pointer;
+}
+
+.field-textarea {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  min-height: 22rem;
+  resize: vertical;
+}
+
+.field-error {
+  color: var(--color-danger);
+  font-size: 0.78rem;
+  margin: 0.35rem 0 0;
+}
+
+.editor-actions {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+}
+
+@media (max-width: 760px) {
+  .page-editor {
+    padding: 1.5rem 1.25rem 2.5rem;
+  }
+
+  .editor-actions {
+    justify-content: stretch;
+  }
+
+  .editor-actions .button {
+    flex: 1;
+  }
+}

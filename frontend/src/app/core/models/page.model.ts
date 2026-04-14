@@ -1,6 +1,6 @@
 export type PageContentFormat = 'html' | 'markdown';
 
-export interface Page {
+export interface PageResponse {
   id: string;
   title: string;
   description: string | null;
@@ -13,7 +13,7 @@ export interface Page {
   updatedAt: string;
 }
 
-export interface CreatePageDto {
+export interface CreatePageRequest {
   title: string;
   description?: string;
   content?: string;
@@ -23,4 +23,6 @@ export interface CreatePageDto {
   sortOrder?: number;
 }
 
-export type UpdatePageDto = Partial<CreatePageDto>;
+export type UpdatePageRequest = Partial<CreatePageRequest>;
+
+export type Page = PageResponse;

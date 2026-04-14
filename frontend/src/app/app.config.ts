@@ -1,14 +1,13 @@
-import { ApplicationConfig, InjectionToken } from '@angular/core';
+import { ApplicationConfig } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { routes } from './app.routes';
-
-export const API_URL = new InjectionToken<string>('API_URL');
+import { API_URL } from './core/config/api-url.token';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideHttpClient(),
-    { provide: API_URL, useValue: 'http://localhost:3000/api' },
+    { provide: API_URL, useValue: '/api' },
   ],
 };

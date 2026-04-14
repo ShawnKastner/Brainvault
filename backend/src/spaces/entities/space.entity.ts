@@ -1,8 +1,12 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn, OneToMany,
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { Page } from '../pages/page.entity';
+import { Page } from '../../pages/entities/page.entity';
 
 @Entity('spaces')
 export class Space {

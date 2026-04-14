@@ -1,0 +1,88 @@
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-icon" aria-hidden="true">
+      <svg viewBox="0 0 16 16" fill="currentColor">
+        <path d="M2 2h5v5H2zm7 0h5v5H9zM2 9h5v5H2zm7 3a2 2 0 1 0 4 0 2 2 0 0 0-4 0z" />
+      </svg>
+    </div>
+    <span class="brand-name">BrainVault</span>
+  </div>
+
+  <label class="search" aria-label="Seiten suchen">
+    <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="6.5" cy="6.5" r="4.5" />
+      <path d="M10.5 10.5L14 14" />
+    </svg>
+    <input type="search" placeholder="Suchen..." [value]="searchQuery()" (input)="updateSearch($event)" />
+  </label>
+
+  <nav class="nav" aria-label="Spaces und Seiten">
+    @if (loading()) {
+      <bv-loading-state />
+    } @else {
+      @for (space of spaces(); track space.id; let first = $first) {
+        <section class="nav-section">
+          <button type="button" class="nav-section-header" (click)="toggleSpace.emit(space.id)">
+            <svg class="nav-chevron" [class.open]="openSpaces()[space.id] ?? first" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M6 4l4 4-4 4V4z" />
+            </svg>
+            <span class="nav-dot" [style.background]="space.color"></span>
+            <span class="nav-section-label">{{ space.name }}</span>
+            <span class="nav-count">{{ space.pages.length }}</span>
+          </button>
+
+          @if ((openSpaces()[space.id] ?? first) || searchQuery()) {
+            <div class="nav-items">
+              @for (page of space.pages; track page.id) {
+                <button
+                  type="button"
+                  class="nav-item"
+                  [class.active]="activePageId() === page.id"
+                  (click)="selectPage.emit(page.id)"
+                >
+                  <svg class="nav-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <rect x="2" y="1" width="12" height="14" rx="2" />
+                    <path d="M5 5h6M5 8h6M5 11h3" />
+                  </svg>
+                  <span class="nav-item-label">{{ page.title }}</span>
+                </button>
+              } @empty {
+                <span class="nav-empty">Keine Treffer</span>
+              }
+            </div>
+          }
+        </section>
+      } @empty {
+        <p class="nav-empty root">Noch keine Spaces vorhanden.</p>
+      }
+
+      <button type="button" class="new-space-button" (click)="showNewSpace.set(!showNewSpace())">
+        + Space hinzufuegen
+      </button>
+    }
+
+    @if (showNewSpace()) {
+      <form class="inline-form" [formGroup]="spaceForm" (ngSubmit)="submitSpace()">
+        <input class="inline-input" formControlName="name" placeholder="Space-Name" />
+        <label class="color-row">
+          <span>Farbe</span>
+          <input type="color" class="color-picker" formControlName="color" />
+        </label>
+        <div class="inline-actions">
+          <button type="submit" class="button primary" [disabled]="saving() || spaceForm.invalid">
+            Erstellen
+          </button>
+          <button type="button" class="button" (click)="showNewSpace.set(false)">Abbrechen</button>
+        </div>
+      </form>
+    }
+  </nav>
+
+  <footer class="sidebar-footer">
+    <div class="avatar">BV</div>
+    <div>
+      <div class="footer-name">BrainVault</div>
+      <div class="footer-role">lokale Knowledge Base</div>
+    </div>
+  </footer>
+</aside>

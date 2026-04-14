@@ -1,11 +1,21 @@
 import {
-  Controller, Get, Post, Put, Delete,
-  Param, Body, HttpCode, HttpStatus,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SpacesService } from './spaces.service';
-import { CreateSpaceDto, UpdateSpaceDto } from './space.dto';
-import { Space } from './space.entity';
+import { CreateSpaceDto } from './dto/create-space.dto';
+import { SpaceWithPagesResponseDto } from './dto/space-response.dto';
+import { UpdateSpaceDto } from './dto/update-space.dto';
 
 @ApiTags('spaces')
 @Controller('spaces')
@@ -14,32 +24,50 @@ export class SpacesController {
 
   @Get()
   @ApiOperation({ summary: 'Alle Spaces mit Pages laden' })
-  findAll(): Promise<Space[]> {
+  @ApiOkResponse({ type: [SpaceWithPagesResponseDto] })
+  findAll(): Promise<SpaceWithPagesResponseDto[]> {
     return this.spacesService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Einen Space laden' })
-  findOne(@Param('id') id: string): Promise<Space> {
+  @ApiOkResponse({ type: SpaceWithPagesResponseDto })
+  findOne(@Param('id', new ParseUUIDPipe()) id: string): Promise<SpaceWithPagesResponseDto> {
     return this.spacesService.findOne(id);
   }
 
   @Post()
   @ApiOperation({ summary: 'Space erstellen' })
-  create(@Body() dto: CreateSpaceDto): Promise<Space> {
+  @ApiCreatedResponse({ type: SpaceWithPagesResponseDto })
+  create(@Body() dto: CreateSpaceDto): Promise<SpaceWithPagesResponseDto> {
     return this.spacesService.create(dto);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Space aktualisieren' })
-  update(@Param('id') id: string, @Body() dto: UpdateSpaceDto): Promise<Space> {
+  @ApiOkResponse({ type: SpaceWithPagesResponseDto })
+  update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateSpaceDto,
+  ): Promise<SpaceWithPagesResponseDto> {
+    return this.spacesService.update(id, dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Space aktualisieren' })
+  @ApiOkResponse({ type: SpaceWithPagesResponseDto })
+  patch(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateSpaceDto,
+  ): Promise<SpaceWithPagesResponseDto> {
     return this.spacesService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Space loeschen' })
-  remove(@Param('id') id: string): Promise<void> {
+  @ApiNoContentResponse()
+  remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
     return this.spacesService.remove(id);
   }
 }

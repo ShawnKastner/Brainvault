@@ -1,6 +1,6 @@
-import type { Page } from './page.model';
+import type { PageResponse } from './page.model';
 
-export interface Space {
+export interface SpaceResponse {
   id: string;
   name: string;
   description: string | null;
@@ -10,15 +10,18 @@ export interface Space {
   updatedAt: string;
 }
 
-export interface SpaceWithPages extends Space {
-  pages: Page[];
+export interface SpaceWithPagesResponse extends SpaceResponse {
+  pages: PageResponse[];
 }
 
-export interface CreateSpaceDto {
+export interface CreateSpaceRequest {
   name: string;
   description?: string;
   color?: string;
   sortOrder?: number;
 }
 
-export type UpdateSpaceDto = Partial<CreateSpaceDto>;
+export type UpdateSpaceRequest = Partial<CreateSpaceRequest>;
+
+export type Space = SpaceResponse;
+export type SpaceWithPages = SpaceWithPagesResponse;

@@ -1,0 +1,28 @@
+<header class="topbar">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <span>BrainVault</span>
+    @if (activeSpace(); as space) {
+      <span class="sep">/</span>
+      <span>{{ space.name }}</span>
+    }
+    @if (activePage(); as page) {
+      <span class="sep">/</span>
+      <span class="current">{{ page.title }}</span>
+    }
+  </nav>
+
+  <div class="topbar-actions">
+    @if (!editMode()) {
+      <button type="button" class="button" (click)="showCreatePage.emit()">+ Neue Seite</button>
+      @if (activePage()) {
+        <button type="button" class="button" (click)="startEdit.emit()">Bearbeiten</button>
+        <button type="button" class="button danger" (click)="deletePage.emit()">Loeschen</button>
+      }
+    } @else {
+      <button type="button" class="button" (click)="cancelEdit.emit()">Abbrechen</button>
+      <button type="button" class="button primary" [disabled]="saving()" (click)="savePage.emit()">
+        {{ saving() ? 'Speichert...' : 'Speichern' }}
+      </button>
+    }
+  </div>
+</header>

@@ -1,0 +1,84 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+.app-shell {
+  background: var(--color-surface-app);
+  display: flex;
+  font-family: var(--font-sans);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main {
+  background: var(--color-surface);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.app-alert {
+  align-items: center;
+  background: var(--color-danger-soft);
+  border-bottom: 1px solid rgba(190, 45, 64, 0.22);
+  color: var(--color-danger);
+  display: flex;
+  font-size: 0.85rem;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.65rem 1.5rem;
+}
+
+.new-page-bar {
+  align-items: center;
+  background: var(--color-surface-panel);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 1.5rem;
+}
+
+.new-page-input,
+.new-page-select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font: inherit;
+  outline: none;
+  padding: 0.5rem 0.65rem;
+}
+
+.new-page-input {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.new-page-select {
+  cursor: pointer;
+}
+
+.new-page-input:focus,
+.new-page-select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-ring);
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .new-page-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

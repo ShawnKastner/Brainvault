@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
@@ -31,8 +29,10 @@ services:
       DB_NAME: brainvault
       DB_USER: brainvault
       DB_PASS: brainvault_secret
+      DB_SYNCHRONIZE: "false"
       PORT: 3000
       NODE_ENV: production
+      CORS_ORIGINS: http://localhost:4200,http://localhost
     depends_on:
       db:
         condition: service_healthy

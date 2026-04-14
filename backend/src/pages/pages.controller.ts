@@ -1,11 +1,29 @@
 import {
-  Controller, Get, Post, Put, Delete,
-  Param, Body, Query, HttpCode, HttpStatus,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PagesService } from './pages.service';
-import { CreatePageDto, UpdatePageDto } from './page.dto';
-import { Page } from './page.entity';
+import { CreatePageDto } from './dto/create-page.dto';
+import { PageResponseDto } from './dto/page-response.dto';
+import { UpdatePageDto } from './dto/update-page.dto';
 
 @ApiTags('pages')
 @Controller('pages')
@@ -15,32 +33,50 @@ export class PagesController {
   @Get()
   @ApiOperation({ summary: 'Pages laden (optional nach spaceId filtern)' })
   @ApiQuery({ name: 'spaceId', required: false })
-  findAll(@Query('spaceId') spaceId?: string): Promise<Page[]> {
+  @ApiOkResponse({ type: [PageResponseDto] })
+  findAll(@Query('spaceId', new ParseUUIDPipe({ optional: true })) spaceId?: string): Promise<PageResponseDto[]> {
     return this.pagesService.findAll(spaceId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Eine Page laden' })
-  findOne(@Param('id') id: string): Promise<Page> {
+  @ApiOkResponse({ type: PageResponseDto })
+  findOne(@Param('id', new ParseUUIDPipe()) id: string): Promise<PageResponseDto> {
     return this.pagesService.findOne(id);
   }
 
   @Post()
   @ApiOperation({ summary: 'Page erstellen' })
-  create(@Body() dto: CreatePageDto): Promise<Page> {
+  @ApiCreatedResponse({ type: PageResponseDto })
+  create(@Body() dto: CreatePageDto): Promise<PageResponseDto> {
     return this.pagesService.create(dto);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Page aktualisieren' })
-  update(@Param('id') id: string, @Body() dto: UpdatePageDto): Promise<Page> {
+  @ApiOkResponse({ type: PageResponseDto })
+  update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdatePageDto,
+  ): Promise<PageResponseDto> {
+    return this.pagesService.update(id, dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Page aktualisieren' })
+  @ApiOkResponse({ type: PageResponseDto })
+  patch(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdatePageDto,
+  ): Promise<PageResponseDto> {
     return this.pagesService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Page loeschen' })
-  remove(@Param('id') id: string): Promise<void> {
+  @ApiNoContentResponse()
+  remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
     return this.pagesService.remove(id);
   }
 }

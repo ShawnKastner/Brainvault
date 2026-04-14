@@ -1,9 +1,10 @@
-import { IsString, IsOptional, IsHexColor, IsInt, MaxLength, Min } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { IsHexColor, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSpaceDto {
   @ApiProperty({ example: 'Development' })
   @IsString()
+  @MinLength(1)
   @MaxLength(100)
   name: string;
 
@@ -23,5 +24,3 @@ export class CreateSpaceDto {
   @Min(0)
   sortOrder?: number;
 }
-
-export class UpdateSpaceDto extends PartialType(CreateSpaceDto) {}

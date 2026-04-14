@@ -1,12 +1,21 @@
 import {
-  IsString, IsOptional, IsArray, IsUUID, IsInt, MaxLength, Min, IsIn,
+  IsArray,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+  Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { PAGE_CONTENT_FORMATS, PageContentFormat } from './page.entity';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PAGE_CONTENT_FORMATS, PageContentFormat } from '../entities/page.entity';
 
 export class CreatePageDto {
   @ApiProperty({ example: 'NestJS Architektur' })
   @IsString()
+  @MinLength(1)
   @MaxLength(200)
   title: string;
 
@@ -41,5 +50,3 @@ export class CreatePageDto {
   @Min(0)
   sortOrder?: number;
 }
-
-export class UpdatePageDto extends PartialType(CreatePageDto) {}

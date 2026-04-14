@@ -1,9 +1,13 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn,
-  ManyToOne, JoinColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { Space } from '../spaces/space.entity';
+import { Space } from '../../spaces/entities/space.entity';
 
 export const PAGE_CONTENT_FORMATS = ['html', 'markdown'] as const;
 export type PageContentFormat = (typeof PAGE_CONTENT_FORMATS)[number];

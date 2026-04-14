@@ -1,7 +1,15 @@
 import { Routes } from '@angular/router';
-import { LayoutComponent } from './features/layout/layout.component';
 
 export const routes: Routes = [
-  { path: '', component: LayoutComponent },
+  {
+    path: '',
+    loadComponent: () =>
+      import('./features/shell/shell.component').then((module) => module.ShellComponent),
+  },
+  {
+    path: 'pages/:pageId',
+    loadComponent: () =>
+      import('./features/shell/shell.component').then((module) => module.ShellComponent),
+  },
   { path: '**', redirectTo: '' },
 ];
