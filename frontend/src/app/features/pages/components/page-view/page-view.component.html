@@ -25,7 +25,7 @@
   }
 
   @if (page().content) {
-    <div class="page-body" [innerHTML]="page() | pageContent"></div>
+    <div class="page-body" [innerHTML]="page() | pageContent" [bvRenderMermaid]="page()"></div>
   } @else {
     <div class="page-empty">
       Noch kein Inhalt. Klicke auf <strong>Bearbeiten</strong>, um loszulegen.

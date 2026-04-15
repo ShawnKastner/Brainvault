@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, input } from '@angular/core';
 import type { PageResponse } from '../../../../core/models/page.model';
 import type { SpaceResponse } from '../../../../core/models/space.model';
+import { MermaidRendererDirective } from '../../../../shared/directives/mermaid-renderer.directive';
 import { PageContentPipe } from '../../../../shared/pipes/page-content.pipe';
 import { calculateReadingStats } from '../../../../shared/utils/reading-stats';
 
 @Component({
   selector: 'bv-page-view',
   standalone: true,
-  imports: [PageContentPipe],
+  imports: [PageContentPipe, MermaidRendererDirective],
   templateUrl: './page-view.component.html',
   styleUrl: './page-view.component.scss',
   encapsulation: ViewEncapsulation.None,

@@ -114,6 +114,35 @@
   padding: 0;
 }
 
+.page-body .mermaid-diagram {
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: 1rem 0;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.page-body .mermaid-diagram__viewport {
+  min-width: max-content;
+}
+
+.page-body .mermaid-diagram svg {
+  display: block;
+  height: auto;
+  max-width: 100%;
+}
+
+.page-body .mermaid-source--error {
+  border-color: var(--color-danger, #b42318);
+}
+
+.page-body .mermaid-error {
+  color: var(--color-danger, #b42318);
+  font-size: 0.82rem;
+  margin: -0.35rem 0 0.875rem;
+}
+
 .page-body a {
   color: var(--color-accent-strong);
   text-decoration: underline;
