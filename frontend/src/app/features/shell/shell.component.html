@@ -3,6 +3,7 @@
     [spaces]="store.filteredSpaces()"
     [loading]="store.loading()"
     [saving]="store.saving()"
+    [dragDisabled]="editMode()"
     [openSpaces]="openSpaces()"
     [activePageId]="store.activePageId()"
     [searchQuery]="store.searchQuery()"
@@ -11,6 +12,7 @@
     (searchQueryChange)="store.setSearchQuery($event)"
     (createSpace)="createSpace($event)"
     (deleteSpace)="requestDeleteSpace($event)"
+    (movePageToSpace)="movePageToSpace($event)"
   />
 
   <main class="main">

@@ -106,7 +106,13 @@
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
   width: 100%;
+}
+
+.nav-section-header.drop-target {
+  background: var(--color-accent-soft);
+  box-shadow: inset 3px 0 0 var(--color-accent);
 }
 
 .nav-section-toggle {
@@ -199,11 +205,27 @@
 .nav-item {
   align-items: center;
   border-radius: var(--radius-md);
+  cursor: grab;
   display: flex;
   gap: 0.4rem;
   margin: 0.08rem 0.5rem 0.08rem 0;
   padding: 0.35rem 0.75rem 0.35rem 0;
+  touch-action: manipulation;
+  user-select: none;
   width: calc(100% - 0.5rem);
+}
+
+.nav.dragging,
+.nav.dragging .nav-item {
+  cursor: grabbing;
+}
+
+.nav-item.dragging {
+  opacity: 0.45;
+}
+
+.nav-item.drag-disabled {
+  cursor: pointer;
 }
 
 .nav-item:hover,
@@ -228,6 +250,37 @@
 .nav-item-label {
   color: var(--color-text-soft);
   font-size: 0.78rem;
+}
+
+.drag-preview {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.18);
+  color: var(--color-text);
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 0.4rem;
+  left: 0;
+  max-width: 14rem;
+  overflow: hidden;
+  padding: 0.4rem 0.6rem;
+  pointer-events: none;
+  position: fixed;
+  text-overflow: ellipsis;
+  top: 0;
+  transform: translate(0.75rem, 0.75rem);
+  white-space: nowrap;
+  z-index: 50;
+}
+
+.drag-preview-icon {
+  color: var(--color-accent-strong);
+  flex: 0 0 auto;
+  height: 0.85rem;
+  width: 0.85rem;
 }
 
 .nav-empty {

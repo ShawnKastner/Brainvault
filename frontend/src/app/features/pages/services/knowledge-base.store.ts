@@ -133,6 +133,31 @@ export class KnowledgeBaseStore {
       .subscribe();
   }
 
+  movePageToSpace(pageId: string, targetSpaceId: string): void {
+    const currentSpaces = this.spaces();
+    const currentPage = findPage(currentSpaces, pageId);
+    const targetSpace = currentSpaces.find((space) => space.id === targetSpaceId);
+
+    if (!currentPage || !targetSpace || currentPage.space.id === targetSpaceId) return;
+
+    const preferredPageId = this.activePageId();
+    this.saving.set(true);
+    this.error.set(null);
+
+    this.pagesApi
+      .update(pageId, {
+        spaceId: targetSpaceId,
+        sortOrder: getNextSortOrder(targetSpace),
+      })
+      .pipe(
+        switchMap(() => this.spacesApi.getAll()),
+        tap((spaces) => this.applySpaces(spaces, preferredPageId)),
+        this.catchStoreError('Die Seite konnte nicht verschoben werden.'),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe();
+  }
+
   deletePage(id: string, onDeleted?: (nextPageId: string | null) => void): void {
     this.saving.set(true);
     this.error.set(null);
@@ -207,6 +232,11 @@ function findPage(spaces: SpaceWithPagesResponse[], pageId: string) {
 
 function getFirstPageId(spaces: SpaceWithPagesResponse[]): string | null {
   return spaces.find((space) => space.pages.length > 0)?.pages[0]?.id ?? null;
+}
+
+function getNextSortOrder(space: SpaceWithPagesResponse): number {
+  if (space.pages.length === 0) return 0;
+  return Math.max(...space.pages.map((page) => page.sortOrder)) + 1;
 }
 
 function readErrorMessage(error: unknown): string {

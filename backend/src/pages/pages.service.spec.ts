@@ -20,6 +20,7 @@ const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const updatedAt = new Date('2026-01-02T00:00:00.000Z');
 const pageId = '50b0b4a7-5115-42c4-bd08-1698e8e5f7a8';
 const spaceId = '6f27ef68-7719-48da-9f58-8ca0605f5b22';
+const targetSpaceId = '1f9b3136-3f7b-4b1b-81cc-1bc8e956f519';
 
 function createPage(overrides: Partial<Page> = {}): Page {
   return {
@@ -114,5 +115,35 @@ describe(PagesService.name, () => {
     await expect(service.create({ title: 'Missing', spaceId })).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('verifies the target space before moving a page', async () => {
+    pagesRepo.findOne.mockResolvedValue(createPage());
+    spacesRepo.existsBy.mockResolvedValue(true);
+
+    const result = await service.update(pageId, {
+      spaceId: targetSpaceId,
+      sortOrder: 7,
+    });
+
+    expect(spacesRepo.existsBy).toHaveBeenCalledWith({ id: targetSpaceId });
+    expect(pagesRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaceId: targetSpaceId,
+        sortOrder: 7,
+      }),
+    );
+    expect(result.spaceId).toBe(targetSpaceId);
+    expect(result.sortOrder).toBe(7);
+  });
+
+  it('throws when moving a page to a missing space', async () => {
+    pagesRepo.findOne.mockResolvedValue(createPage());
+    spacesRepo.existsBy.mockResolvedValue(false);
+
+    await expect(service.update(pageId, { spaceId: targetSpaceId })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(pagesRepo.save).not.toHaveBeenCalled();
   });
 });

@@ -16,13 +16,18 @@
     <input type="search" placeholder="Suchen..." [value]="searchQuery()" (input)="updateSearch($event)" />
   </label>
 
-  <nav class="nav" aria-label="Spaces und Seiten">
+  <nav class="nav" [class.dragging]="draggingPage() !== null" aria-label="Spaces und Seiten">
     @if (loading()) {
       <bv-loading-state />
     } @else {
       @for (space of spaces(); track space.id; let first = $first) {
         <section class="nav-section">
-          <div class="nav-section-header">
+          <div
+            class="nav-section-header"
+            data-space-drop-target
+            [attr.data-space-id]="space.id"
+            [class.drop-target]="dropTargetSpaceId() === space.id"
+          >
             <button
               type="button"
               class="nav-section-toggle"
@@ -57,7 +62,10 @@
                   type="button"
                   class="nav-item"
                   [class.active]="activePageId() === page.id"
-                  (click)="selectPage.emit(page.id)"
+                  [class.dragging]="draggingPage()?.pageId === page.id"
+                  [class.drag-disabled]="dragDisabled() || saving()"
+                  (click)="selectPageFromClick(page.id, $event)"
+                  (pointerdown)="startPagePointer(page, space.id, $event)"
                 >
                   <svg class="nav-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <rect x="2" y="1" width="12" height="14" rx="2" />
@@ -96,6 +104,21 @@
       </form>
     }
   </nav>
+
+  @if (dragPreview(); as preview) {
+    <div
+      class="drag-preview"
+      [style.left.px]="preview.x"
+      [style.top.px]="preview.y"
+      aria-hidden="true"
+    >
+      <svg class="drag-preview-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="1" width="12" height="14" rx="2" />
+        <path d="M5 5h6M5 8h6M5 11h3" />
+      </svg>
+      <span>{{ preview.title }}</span>
+    </div>
+  }
 
   <footer class="sidebar-footer">
     <div class="avatar">BV</div>

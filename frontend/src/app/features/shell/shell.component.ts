@@ -17,7 +17,7 @@ import { ConfirmModalComponent } from '../../shared/ui/confirm-modal/confirm-mod
 import { PageEditorComponent } from '../pages/components/page-editor/page-editor.component';
 import { PageViewComponent } from '../pages/components/page-view/page-view.component';
 import { KnowledgeBaseStore } from '../pages/services/knowledge-base.store';
-import { SidebarComponent } from './components/sidebar/sidebar.component';
+import { SidebarComponent, type MovePageToSpaceRequest } from './components/sidebar/sidebar.component';
 import { TopbarComponent } from './components/topbar/topbar.component';
 
 type DeleteDialog =
@@ -127,6 +127,11 @@ export class ShellComponent {
   protected requestDeleteSpace(space: SpaceWithPagesResponse): void {
     const fullSpace = this.store.spaces().find((candidate) => candidate.id === space.id) ?? space;
     this.deleteDialog.set({ kind: 'space', space: fullSpace });
+  }
+
+  protected movePageToSpace(request: MovePageToSpaceRequest): void {
+    this.openSpaces.update((spaces) => ({ ...spaces, [request.targetSpaceId]: true }));
+    this.store.movePageToSpace(request.pageId, request.targetSpaceId);
   }
 
   protected submitNewPage(): void {

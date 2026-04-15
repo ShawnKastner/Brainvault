@@ -1,9 +1,36 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { PagesApiService } from '../../../core/api/pages-api.service';
 import { SpacesApiService } from '../../../core/api/spaces-api.service';
+import type { PageResponse } from '../../../core/models/page.model';
 import type { SpaceWithPagesResponse } from '../../../core/models/space.model';
 import { KnowledgeBaseStore } from './knowledge-base.store';
+
+const page1: PageResponse = {
+  id: 'page-1',
+  title: 'NestJS Architektur',
+  description: null,
+  content: 'Module und Provider',
+  contentFormat: 'markdown',
+  tags: ['nestjs'],
+  spaceId: 'space-1',
+  sortOrder: 0,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const page2: PageResponse = {
+  id: 'page-2',
+  title: 'Runbooks',
+  description: null,
+  content: 'Deployments',
+  contentFormat: 'markdown',
+  tags: ['ops'],
+  spaceId: 'space-2',
+  sortOrder: 4,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
 
 const spaces: SpaceWithPagesResponse[] = [
   {
@@ -14,20 +41,7 @@ const spaces: SpaceWithPagesResponse[] = [
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
-    pages: [
-      {
-        id: 'page-1',
-        title: 'NestJS Architektur',
-        description: null,
-        content: 'Module und Provider',
-        contentFormat: 'markdown',
-        tags: ['nestjs'],
-        spaceId: 'space-1',
-        sortOrder: 0,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ],
+    pages: [page1],
   },
 ];
 
@@ -40,20 +54,29 @@ const spacesAfterDelete: SpaceWithPagesResponse[] = [
     sortOrder: 1,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
-    pages: [
-      {
-        id: 'page-2',
-        title: 'Runbooks',
-        description: null,
-        content: 'Deployments',
-        contentFormat: 'markdown',
-        tags: ['ops'],
-        spaceId: 'space-2',
-        sortOrder: 0,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ],
+    pages: [{ ...page2, sortOrder: 0 }],
+  },
+];
+
+const spacesForMove: SpaceWithPagesResponse[] = [
+  spaces[0],
+  {
+    id: 'space-2',
+    name: 'Operations',
+    description: null,
+    color: '#BA7517',
+    sortOrder: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    pages: [page2],
+  },
+];
+
+const spacesAfterMove: SpaceWithPagesResponse[] = [
+  { ...spacesForMove[0], pages: [] },
+  {
+    ...spacesForMove[1],
+    pages: [page2, { ...page1, spaceId: 'space-2', sortOrder: 5 }],
   },
 ];
 
@@ -124,5 +147,55 @@ describe(KnowledgeBaseStore.name, () => {
 
     expect(store.spaces()).toEqual(remainingSpaces);
     expect(store.activePageId()).toBe('page-2');
+  });
+
+  it('moves a page to the end of the target space', () => {
+    store.spaces.set(spacesForMove);
+    store.activePageId.set('page-1');
+    pagesApi.update.and.returnValue(of({ ...page1, spaceId: 'space-2', sortOrder: 5 }));
+    spacesApi.getAll.and.returnValue(of(spacesAfterMove));
+
+    store.movePageToSpace('page-1', 'space-2');
+
+    expect(pagesApi.update).toHaveBeenCalledWith('page-1', {
+      spaceId: 'space-2',
+      sortOrder: 5,
+    });
+    expect(store.spaces()).toEqual(spacesAfterMove);
+    expect(store.activePageId()).toBe('page-1');
+    expect(store.saving()).toBeFalse();
+  });
+
+  it('does not call the API when moving a page to its current space', () => {
+    store.spaces.set(spacesForMove);
+
+    store.movePageToSpace('page-1', 'space-1');
+
+    expect(pagesApi.update).not.toHaveBeenCalled();
+    expect(store.saving()).toBeFalse();
+  });
+
+  it('keeps a different active page selected after moving another page', () => {
+    store.spaces.set(spacesForMove);
+    store.activePageId.set('page-2');
+    pagesApi.update.and.returnValue(of({ ...page1, spaceId: 'space-2', sortOrder: 5 }));
+    spacesApi.getAll.and.returnValue(of(spacesAfterMove));
+
+    store.movePageToSpace('page-1', 'space-2');
+
+    expect(store.activePageId()).toBe('page-2');
+  });
+
+  it('reports errors when a page move fails', () => {
+    store.spaces.set(spacesForMove);
+    store.activePageId.set('page-2');
+    pagesApi.update.and.returnValue(throwError(() => new Error('failed')));
+
+    store.movePageToSpace('page-1', 'space-2');
+
+    expect(spacesApi.getAll).not.toHaveBeenCalled();
+    expect(store.error()).toBe('Die Seite konnte nicht verschoben werden.');
+    expect(store.activePageId()).toBe('page-2');
+    expect(store.saving()).toBeFalse();
   });
 });
