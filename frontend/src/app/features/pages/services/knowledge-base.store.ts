@@ -85,6 +85,24 @@ export class KnowledgeBaseStore {
       .subscribe();
   }
 
+  deleteSpace(id: string, onDeleted?: (nextPageId: string | null) => void): void {
+    this.saving.set(true);
+    this.error.set(null);
+
+    this.spacesApi
+      .remove(id)
+      .pipe(
+        switchMap(() => this.spacesApi.getAll()),
+        tap((spaces) => {
+          this.applySpaces(spaces);
+          onDeleted?.(this.activePageId());
+        }),
+        this.catchStoreError('Der Space konnte nicht gelöscht werden.'),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe();
+  }
+
   createPage(request: CreatePageRequest, onCreated?: (page: PageResponse) => void): void {
     this.saving.set(true);
     this.error.set(null);
@@ -129,7 +147,7 @@ export class KnowledgeBaseStore {
           this.activePageId.set(nextPageId);
           onDeleted?.(nextPageId);
         }),
-        this.catchStoreError('Die Seite konnte nicht geloescht werden.'),
+        this.catchStoreError('Die Seite konnte nicht gelöscht werden.'),
         finalize(() => this.saving.set(false)),
       )
       .subscribe();

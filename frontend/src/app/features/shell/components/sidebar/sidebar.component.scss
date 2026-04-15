@@ -89,7 +89,8 @@
   margin-bottom: 0.125rem;
 }
 
-.nav-section-header,
+.nav-section-toggle,
+.nav-section-delete,
 .nav-item,
 .new-space-button {
   background: transparent;
@@ -103,13 +104,51 @@
 .nav-section-header {
   align-items: center;
   display: flex;
-  gap: 0.4rem;
-  padding: 0.35rem 0.75rem;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
   width: 100%;
 }
 
-.nav-section-header:hover .nav-section-label {
+.nav-section-toggle {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.1rem 0;
+}
+
+.nav-section-toggle:hover .nav-section-label {
   color: var(--color-text);
+}
+
+.nav-section-delete {
+  align-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  display: flex;
+  flex: 0 0 auto;
+  height: 1.55rem;
+  justify-content: center;
+  opacity: 0.72;
+  padding: 0;
+  width: 1.55rem;
+}
+
+.nav-section-delete:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  opacity: 1;
+}
+
+.nav-section-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.nav-section-delete svg {
+  height: 0.82rem;
+  width: 0.82rem;
 }
 
 .nav-chevron {

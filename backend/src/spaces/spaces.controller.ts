@@ -65,7 +65,7 @@ export class SpacesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Space loeschen' })
+  @ApiOperation({ summary: 'Space löschen' })
   @ApiNoContentResponse()
   remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
     return this.spacesService.remove(id);

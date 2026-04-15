@@ -25,6 +25,7 @@ export class SidebarComponent {
   readonly toggleSpace = output<string>();
   readonly searchQueryChange = output<string>();
   readonly createSpace = output<CreateSpaceRequest>();
+  readonly deleteSpace = output<SpaceWithPagesResponse>();
 
   readonly showNewSpace = signal(false);
   readonly spaceForm = this.formBuilder.group({
@@ -49,5 +50,10 @@ export class SidebarComponent {
 
   updateSearch(event: Event): void {
     this.searchQueryChange.emit((event.target as HTMLInputElement).value);
+  }
+
+  requestDeleteSpace(space: SpaceWithPagesResponse, event: Event): void {
+    event.stopPropagation();
+    this.deleteSpace.emit(space);
   }
 }

@@ -10,6 +10,7 @@
     (selectPage)="selectPage($event)"
     (searchQueryChange)="store.setSearchQuery($event)"
     (createSpace)="createSpace($event)"
+    (deleteSpace)="requestDeleteSpace($event)"
   />
 
   <main class="main">
@@ -68,4 +69,17 @@
       }
     </section>
   </main>
+
+  <bv-confirm-modal
+    [open]="deleteDialog() !== null"
+    [title]="deleteDialogTitle()"
+    [message]="deleteDialogMessage()"
+    [confirmLabel]="deleteDialogConfirmLabel()"
+    [cancelLabel]="'Abbrechen'"
+    [pendingLabel]="'Löscht...'"
+    [pending]="store.saving()"
+    [danger]="true"
+    (cancel)="closeDeleteDialog()"
+    (confirm)="confirmDelete()"
+  />
 </div>

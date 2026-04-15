@@ -31,4 +31,12 @@ describe(SpacesApiService.name, () => {
     expect(request.request.method).toBe('GET');
     request.flush([]);
   });
+
+  it('uses DELETE for space removal', () => {
+    service.remove('space-1').subscribe();
+
+    const request = http.expectOne('/api/spaces/space-1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null);
+  });
 });

@@ -31,13 +31,39 @@ const spaces: SpaceWithPagesResponse[] = [
   },
 ];
 
+const spacesAfterDelete: SpaceWithPagesResponse[] = [
+  {
+    id: 'space-2',
+    name: 'Operations',
+    description: null,
+    color: '#BA7517',
+    sortOrder: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    pages: [
+      {
+        id: 'page-2',
+        title: 'Runbooks',
+        description: null,
+        content: 'Deployments',
+        contentFormat: 'markdown',
+        tags: ['ops'],
+        spaceId: 'space-2',
+        sortOrder: 0,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ],
+  },
+];
+
 describe(KnowledgeBaseStore.name, () => {
   let store: KnowledgeBaseStore;
   let spacesApi: jasmine.SpyObj<SpacesApiService>;
   let pagesApi: jasmine.SpyObj<PagesApiService>;
 
   beforeEach(() => {
-    spacesApi = jasmine.createSpyObj<SpacesApiService>('SpacesApiService', ['getAll', 'create']);
+    spacesApi = jasmine.createSpyObj<SpacesApiService>('SpacesApiService', ['getAll', 'create', 'remove']);
     pagesApi = jasmine.createSpyObj<PagesApiService>('PagesApiService', [
       'create',
       'update',
@@ -71,5 +97,32 @@ describe(KnowledgeBaseStore.name, () => {
     store.setSearchQuery('nestjs');
 
     expect(store.filteredSpaces()[0].pages[0].title).toBe('NestJS Architektur');
+  });
+
+  it('deletes a space and selects the first remaining page', () => {
+    const deleted = jasmine.createSpy('deleted');
+    store.activePageId.set('page-1');
+    spacesApi.remove.and.returnValue(of(void 0));
+    spacesApi.getAll.and.returnValue(of(spacesAfterDelete));
+
+    store.deleteSpace('space-1', deleted);
+
+    expect(spacesApi.remove).toHaveBeenCalledWith('space-1');
+    expect(store.spaces()).toEqual(spacesAfterDelete);
+    expect(store.activePageId()).toBe('page-2');
+    expect(deleted).toHaveBeenCalledWith('page-2');
+    expect(store.saving()).toBeFalse();
+  });
+
+  it('keeps the active page when deleting another space', () => {
+    const remainingSpaces = [...spacesAfterDelete];
+    store.activePageId.set('page-2');
+    spacesApi.remove.and.returnValue(of(void 0));
+    spacesApi.getAll.and.returnValue(of(remainingSpaces));
+
+    store.deleteSpace('space-1');
+
+    expect(store.spaces()).toEqual(remainingSpaces);
+    expect(store.activePageId()).toBe('page-2');
   });
 });

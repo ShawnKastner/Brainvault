@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ViewChild,
+  computed,
   effect,
   inject,
   signal,
@@ -9,19 +10,25 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { UpdatePageRequest } from '../../core/models/page.model';
-import type { CreateSpaceRequest } from '../../core/models/space.model';
+import type { PageResponse, UpdatePageRequest } from '../../core/models/page.model';
+import type { CreateSpaceRequest, SpaceWithPagesResponse } from '../../core/models/space.model';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
+import { ConfirmModalComponent } from '../../shared/ui/confirm-modal/confirm-modal.component';
 import { PageEditorComponent } from '../pages/components/page-editor/page-editor.component';
 import { PageViewComponent } from '../pages/components/page-view/page-view.component';
 import { KnowledgeBaseStore } from '../pages/services/knowledge-base.store';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { TopbarComponent } from './components/topbar/topbar.component';
 
+type DeleteDialog =
+  | { kind: 'page'; page: PageResponse }
+  | { kind: 'space'; space: SpaceWithPagesResponse };
+
 @Component({
   selector: 'bv-shell',
   standalone: true,
   imports: [
+    ConfirmModalComponent,
     EmptyStateComponent,
     PageEditorComponent,
     PageViewComponent,
@@ -42,6 +49,36 @@ export class ShellComponent {
   protected readonly openSpaces = signal<Partial<Record<string, boolean>>>({});
   protected readonly editMode = signal(false);
   protected readonly showNewPage = signal(false);
+  protected readonly deleteDialog = signal<DeleteDialog | null>(null);
+
+  protected readonly deleteDialogTitle = computed(() => {
+    const dialog = this.deleteDialog();
+    if (!dialog) return '';
+    return dialog.kind === 'page' ? 'Seite löschen?' : 'Space löschen?';
+  });
+
+  protected readonly deleteDialogMessage = computed(() => {
+    const dialog = this.deleteDialog();
+    if (!dialog) return '';
+
+    if (dialog.kind === 'page') {
+      return `Die Seite "${dialog.page.title}" wird dauerhaft gelöscht.`;
+    }
+
+    const count = dialog.space.pages.length;
+    if (count === 0) {
+      return `Der Space "${dialog.space.name}" wird dauerhaft gelöscht. Er enthält keine Seiten.`;
+    }
+    if (count === 1) {
+      return `Der Space "${dialog.space.name}" wird dauerhaft gelöscht. Eine enthaltene Seite wird ebenfalls gelöscht.`;
+    }
+    return `Der Space "${dialog.space.name}" wird dauerhaft gelöscht. ${count} enthaltene Seiten werden ebenfalls gelöscht.`;
+  });
+
+  protected readonly deleteDialogConfirmLabel = computed(() => {
+    const dialog = this.deleteDialog();
+    return dialog?.kind === 'space' ? 'Space löschen' : 'Seite löschen';
+  });
 
   protected readonly newPageForm = this.formBuilder.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
@@ -87,6 +124,11 @@ export class ShellComponent {
     this.store.createSpace(request);
   }
 
+  protected requestDeleteSpace(space: SpaceWithPagesResponse): void {
+    const fullSpace = this.store.spaces().find((candidate) => candidate.id === space.id) ?? space;
+    this.deleteDialog.set({ kind: 'space', space: fullSpace });
+  }
+
   protected submitNewPage(): void {
     if (this.newPageForm.invalid) {
       this.newPageForm.markAllAsTouched();
@@ -126,11 +168,39 @@ export class ShellComponent {
   protected deleteActivePage(): void {
     const page = this.store.activePage();
     if (!page) return;
-    if (!confirm(`"${page.title}" wirklich loeschen?`)) return;
 
-    this.store.deletePage(page.id, (nextPageId) => {
-      this.editMode.set(false);
-      void this.router.navigate(nextPageId ? ['/pages', nextPageId] : ['/']);
+    this.deleteDialog.set({ kind: 'page', page });
+  }
+
+  protected closeDeleteDialog(): void {
+    if (this.store.saving()) return;
+    this.deleteDialog.set(null);
+  }
+
+  protected confirmDelete(): void {
+    const dialog = this.deleteDialog();
+    if (!dialog) return;
+
+    if (dialog.kind === 'space') {
+      this.store.deleteSpace(dialog.space.id, (nextPageId) => {
+        this.openSpaces.update((spaces) => {
+          const { [dialog.space.id]: _deletedSpace, ...rest } = spaces;
+          return rest;
+        });
+        this.finishDelete(nextPageId);
+      });
+      return;
+    }
+
+    this.store.deletePage(dialog.page.id, (nextPageId) => {
+      this.finishDelete(nextPageId);
     });
+  }
+
+  private finishDelete(nextPageId: string | null): void {
+    this.deleteDialog.set(null);
+    this.editMode.set(false);
+    this.showNewPage.set(false);
+    void this.router.navigate(nextPageId ? ['/pages', nextPageId] : ['/']);
   }
 }

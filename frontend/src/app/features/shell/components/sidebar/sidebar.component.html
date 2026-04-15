@@ -22,14 +22,33 @@
     } @else {
       @for (space of spaces(); track space.id; let first = $first) {
         <section class="nav-section">
-          <button type="button" class="nav-section-header" (click)="toggleSpace.emit(space.id)">
-            <svg class="nav-chevron" [class.open]="openSpaces()[space.id] ?? first" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M6 4l4 4-4 4V4z" />
-            </svg>
-            <span class="nav-dot" [style.background]="space.color"></span>
-            <span class="nav-section-label">{{ space.name }}</span>
-            <span class="nav-count">{{ space.pages.length }}</span>
-          </button>
+          <div class="nav-section-header">
+            <button
+              type="button"
+              class="nav-section-toggle"
+              [attr.aria-expanded]="openSpaces()[space.id] ?? first"
+              (click)="toggleSpace.emit(space.id)"
+            >
+              <svg class="nav-chevron" [class.open]="openSpaces()[space.id] ?? first" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M6 4l4 4-4 4V4z" />
+              </svg>
+              <span class="nav-dot" [style.background]="space.color"></span>
+              <span class="nav-section-label">{{ space.name }}</span>
+              <span class="nav-count">{{ space.pages.length }}</span>
+            </button>
+            <button
+              type="button"
+              class="nav-section-delete"
+              [disabled]="saving()"
+              [attr.aria-label]="'Space ' + space.name + ' löschen'"
+              (click)="requestDeleteSpace(space, $event)"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M6.4 2.4h3.2l.6 1.2H14M2 3.6h12M4 5.8l.5 7.2h7l.5-7.2" />
+                <path d="M6.5 7.2v3.9M9.5 7.2v3.9" />
+              </svg>
+            </button>
+          </div>
 
           @if ((openSpaces()[space.id] ?? first) || searchQuery()) {
             <div class="nav-items">
@@ -57,7 +76,7 @@
       }
 
       <button type="button" class="new-space-button" (click)="showNewSpace.set(!showNewSpace())">
-        + Space hinzufuegen
+        + Space hinzufügen
       </button>
     }
 

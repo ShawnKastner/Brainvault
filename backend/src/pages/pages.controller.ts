@@ -74,7 +74,7 @@ export class PagesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Page loeschen' })
+  @ApiOperation({ summary: 'Page löschen' })
   @ApiNoContentResponse()
   remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
     return this.pagesService.remove(id);

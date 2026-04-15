@@ -16,7 +16,7 @@
       <button type="button" class="button" (click)="showCreatePage.emit()">+ Neue Seite</button>
       @if (activePage()) {
         <button type="button" class="button" (click)="startEdit.emit()">Bearbeiten</button>
-        <button type="button" class="button danger" (click)="deletePage.emit()">Loeschen</button>
+        <button type="button" class="button danger" (click)="deletePage.emit()">Löschen</button>
       }
     } @else {
       <button type="button" class="button" (click)="cancelEdit.emit()">Abbrechen</button>
