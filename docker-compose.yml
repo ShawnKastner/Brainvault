@@ -22,16 +22,16 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3001}:3000"
     environment:
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: brainvault
       DB_USER: brainvault
       DB_PASS: brainvault_secret
-      DB_SYNCHRONIZE: "false"
+      DB_SYNCHRONIZE: "true"
       PORT: 3000
-      NODE_ENV: production
+      NODE_ENV: development
       CORS_ORIGINS: http://localhost:4200,http://localhost
     depends_on:
       db:
