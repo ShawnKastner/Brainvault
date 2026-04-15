@@ -81,6 +81,20 @@ describe(SidebarComponent.name, () => {
     expect(toggled).toEqual([]);
   });
 
+  it('opens settings from the avatar button', () => {
+    let opened = 0;
+    fixture.componentInstance.openSettings.subscribe(() => {
+      opened += 1;
+    });
+    fixture.detectChanges();
+
+    const avatar = fixture.nativeElement.querySelector('.avatar') as HTMLButtonElement;
+    avatar.click();
+
+    expect(opened).toBe(1);
+    expect(avatar.getAttribute('aria-label')).toBe('Einstellungen öffnen');
+  });
+
   it('keeps short clicks as page selection', () => {
     const selected: string[] = [];
     fixture.componentRef.setInput('spaces', [sourceSpace]);

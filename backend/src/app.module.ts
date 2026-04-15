@@ -6,6 +6,7 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { SpacesModule } from './spaces/spaces.module';
 import { PagesModule } from './pages/pages.module';
+import { SettingsModule } from './settings/settings.module';
 import { validateEnvironment } from './config/env.validation';
 
 @Module({
@@ -19,6 +20,7 @@ import { validateEnvironment } from './config/env.validation';
     HealthModule,
     SpacesModule,
     PagesModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

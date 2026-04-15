@@ -1,5 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import type { PageResponse } from '../../../../core/models/page.model';
+import { API_URL } from '../../../../core/config/api-url.token';
+import { SETTINGS_STORAGE_KEY, SettingsService } from '../../../../core/services/settings.service';
 import {
   MERMAID_LOADER,
   MermaidRendererApi,
@@ -21,10 +25,16 @@ const page: PageResponse = {
 
 describe(PageViewComponent.name, () => {
   let fixture: ComponentFixture<PageViewComponent>;
+  let settings: SettingsService;
+  let http: HttpTestingController;
   let initializeSpy: jasmine.Spy<MermaidRendererApi['initialize']>;
   let renderSpy: jasmine.Spy<MermaidRendererApi['render']>;
 
   beforeEach(async () => {
+    window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-nav-density');
+
     initializeSpy = jasmine.createSpy('initialize');
     renderSpy = jasmine.createSpy('render').and.callFake(async (id: string, definition: string) => ({
       svg: `<svg id="${id}"><text>${definition}</text></svg>`,
@@ -33,6 +43,9 @@ describe(PageViewComponent.name, () => {
     await TestBed.configureTestingModule({
       imports: [PageViewComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: API_URL, useValue: '/api' },
         {
           provide: MERMAID_LOADER,
           useValue: async () => ({
@@ -43,10 +56,24 @@ describe(PageViewComponent.name, () => {
       ],
     }).compileComponents();
 
+    http = TestBed.inject(HttpTestingController);
+    settings = TestBed.inject(SettingsService);
+    http.expectOne('/api/settings').flush({
+      theme: 'classic',
+      compactNavigation: false,
+      showReadingStats: true,
+    });
     fixture = TestBed.createComponent(PageViewComponent);
     fixture.componentRef.setInput('page', page);
     fixture.componentRef.setInput('space', null);
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    http.verify();
+    window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-nav-density');
   });
 
   it('renders markdown content', () => {
@@ -94,6 +121,22 @@ describe(PageViewComponent.name, () => {
 
     expect(text).toContain('3 Wörter');
     expect(text).toContain('ca. 1 Min. Lesezeit');
+  });
+
+  it('hides word count and reading time when reading stats are disabled', () => {
+    settings.updateSettings({ showReadingStats: false });
+    http.expectOne('/api/settings').flush({
+      theme: 'classic',
+      compactNavigation: false,
+      showReadingStats: false,
+    });
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('.page-reading-stats')).toBeNull();
+    expect(host.textContent).not.toContain('3 Wörter');
+    expect(host.textContent).not.toContain('ca. 1 Min. Lesezeit');
   });
 });
 

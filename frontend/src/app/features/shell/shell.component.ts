@@ -12,8 +12,10 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import type { PageResponse, UpdatePageRequest } from '../../core/models/page.model';
 import type { CreateSpaceRequest, SpaceWithPagesResponse } from '../../core/models/space.model';
+import { SettingsService } from '../../core/services/settings.service';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
 import { ConfirmModalComponent } from '../../shared/ui/confirm-modal/confirm-modal.component';
+import { SettingsModalComponent } from '../../shared/ui/settings-modal/settings-modal.component';
 import { PageEditorComponent } from '../pages/components/page-editor/page-editor.component';
 import { PageViewComponent } from '../pages/components/page-view/page-view.component';
 import { KnowledgeBaseStore } from '../pages/services/knowledge-base.store';
@@ -37,6 +39,7 @@ type DeleteDialog =
     PageEditorComponent,
     PageViewComponent,
     ReactiveFormsModule,
+    SettingsModalComponent,
     SidebarComponent,
     SpaceOverviewComponent,
     TopbarComponent,
@@ -49,11 +52,13 @@ export class ShellComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(NonNullableFormBuilder);
+  private readonly settingsService = inject(SettingsService);
 
   protected readonly store = inject(KnowledgeBaseStore);
   protected readonly openSpaces = signal<Partial<Record<string, boolean>>>({});
   protected readonly editMode = signal(false);
   protected readonly showNewPage = signal(false);
+  protected readonly settingsOpen = signal(false);
   protected readonly deleteDialog = signal<DeleteDialog | null>(null);
 
   protected readonly deleteDialogTitle = computed(() => {

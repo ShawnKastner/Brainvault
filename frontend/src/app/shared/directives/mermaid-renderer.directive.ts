@@ -9,6 +9,7 @@ import {
   OnDestroy,
   inject,
 } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import DOMPurify from 'dompurify';
 
 export interface MermaidRenderResult {
@@ -59,37 +60,38 @@ export const MERMAID_LOADER = new InjectionToken<MermaidLoader>('Mermaid loader'
 });
 
 interface MermaidBlock {
-  block: HTMLPreElement;
+  element: HTMLElement;
   definition: string;
 }
 
-const MERMAID_CONFIG: MermaidRendererConfig = {
+const DEFAULT_THEME_VARIABLES: MermaidRendererConfig['themeVariables'] = {
+  arrowheadColor: '#888780',
+  background: 'transparent',
+  edgeLabelBackground: '#FFFFFF',
+  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  labelTextColor: '#1A1A18',
+  lineColor: '#888780',
+  mainBkg: '#F7F6F3',
+  nodeBorder: '#BA7517',
+  nodeTextColor: '#1A1A18',
+  primaryBorderColor: '#BA7517',
+  primaryColor: '#F7F6F3',
+  primaryTextColor: '#1A1A18',
+  secondaryBorderColor: '#854F0B',
+  secondaryColor: '#FAEEDA',
+  secondaryTextColor: '#1A1A18',
+  tertiaryBorderColor: '#888780',
+  tertiaryColor: '#EFEDE8',
+  tertiaryTextColor: '#1A1A18',
+};
+
+const MERMAID_CONFIG_BASE: Omit<MermaidRendererConfig, 'themeVariables'> = {
   startOnLoad: false,
   securityLevel: 'strict',
   htmlLabels: false,
   theme: 'base',
   flowchart: {
     htmlLabels: false,
-  },
-  themeVariables: {
-    arrowheadColor: '#888780',
-    background: 'transparent',
-    edgeLabelBackground: '#252522',
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-    labelTextColor: '#1A1A18',
-    lineColor: '#888780',
-    mainBkg: '#F7F6F3',
-    nodeBorder: '#BA7517',
-    nodeTextColor: '#1A1A18',
-    primaryBorderColor: '#BA7517',
-    primaryColor: '#F7F6F3',
-    primaryTextColor: '#1A1A18',
-    secondaryBorderColor: '#854F0B',
-    secondaryColor: '#FAEEDA',
-    secondaryTextColor: '#1A1A18',
-    tertiaryBorderColor: '#6A6963',
-    tertiaryColor: '#EFEDE8',
-    tertiaryTextColor: '#1A1A18',
   },
 };
 
@@ -103,11 +105,11 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly loadMermaid = inject(MERMAID_LOADER);
   private readonly zone = inject(NgZone);
+  private readonly document = inject(DOCUMENT);
 
   @Input('bvRenderMermaid') renderTrigger: unknown;
 
   private destroyed = false;
-  private initialized = false;
   private mermaidPromise: Promise<MermaidRendererApi> | null = null;
   private renderRun = 0;
   private scheduled = false;
@@ -151,20 +153,30 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
       mermaid = await this.getMermaid();
     } catch {
       if (this.isCurrentRun(runId)) {
-        blocks.forEach(({ block }) => this.showRenderError(block));
+        blocks.forEach(({ element }) => this.showRenderError(element));
       }
       return;
     }
 
     if (!this.isCurrentRun(runId)) return;
 
+    mermaid.initialize(this.buildMermaidConfig());
     await Promise.all(blocks.map((block) => this.renderBlock(block, mermaid, runId)));
   }
 
   private findMermaidBlocks(): MermaidBlock[] {
-    return Array.from(this.host.nativeElement.querySelectorAll('pre > code'))
+    const sourceBlocks = Array.from(this.host.nativeElement.querySelectorAll('pre > code'))
       .map((code) => this.toMermaidBlock(code))
       .filter((block): block is MermaidBlock => block !== null);
+
+    const renderedBlocks = Array.from(
+      this.host.nativeElement.querySelectorAll<HTMLElement>('.mermaid-diagram[data-mermaid-definition]'),
+    ).map((element) => ({
+      element,
+      definition: element.dataset['mermaidDefinition'] ?? '',
+    })).filter((block) => block.definition.trim().length > 0);
+
+    return [...sourceBlocks, ...renderedBlocks];
   }
 
   private toMermaidBlock(code: Element): MermaidBlock | null {
@@ -179,7 +191,7 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
     if (!definition) return null;
 
     return {
-      block: block as HTMLPreElement,
+      element: block as HTMLPreElement,
       definition,
     };
   }
@@ -194,14 +206,7 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
 
   private async getMermaid(): Promise<MermaidRendererApi> {
     this.mermaidPromise ??= this.loadMermaid();
-    const mermaid = await this.mermaidPromise;
-
-    if (!this.initialized) {
-      mermaid.initialize(MERMAID_CONFIG);
-      this.initialized = true;
-    }
-
-    return mermaid;
+    return this.mermaidPromise;
   }
 
   private async renderBlock(
@@ -209,52 +214,94 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
     mermaid: MermaidRendererApi,
     runId: number,
   ): Promise<void> {
-    const { block, definition } = mermaidBlock;
+    const { element, definition } = mermaidBlock;
 
-    this.removeExistingError(block);
+    this.removeExistingError(element);
 
     try {
       const diagramId = `bv-mermaid-${Date.now()}-${nextDiagramId}`;
       nextDiagramId += 1;
 
       const result = await mermaid.render(diagramId, definition);
-      if (!this.isCurrentRun(runId) || !block.isConnected) return;
+      if (!this.isCurrentRun(runId) || !element.isConnected) return;
 
       const svg = DOMPurify.sanitize(result.svg, {
         USE_PROFILES: { svg: true, svgFilters: true },
       });
       if (!svg.trim()) throw new Error('Mermaid rendered an empty diagram.');
 
-      const wrapper = document.createElement('figure');
+      const wrapper = this.document.createElement('figure');
       wrapper.className = 'mermaid-diagram';
       wrapper.setAttribute('aria-label', 'Mermaid-Diagramm');
+      wrapper.dataset['mermaidDefinition'] = definition;
 
-      const viewport = document.createElement('div');
+      const viewport = this.document.createElement('div');
       viewport.className = 'mermaid-diagram__viewport';
       viewport.innerHTML = svg;
 
       wrapper.appendChild(viewport);
-      block.replaceWith(wrapper);
+      element.replaceWith(wrapper);
       result.bindFunctions?.(wrapper);
     } catch {
-      if (!this.isCurrentRun(runId) || !block.isConnected) return;
-      this.showRenderError(block);
+      if (!this.isCurrentRun(runId) || !element.isConnected) return;
+      this.showRenderError(element);
     }
   }
 
-  private showRenderError(block: HTMLPreElement): void {
-    block.classList.add('mermaid-source', 'mermaid-source--error');
+  private buildMermaidConfig(): MermaidRendererConfig {
+    const styles = this.document.defaultView?.getComputedStyle(this.document.documentElement);
+    const cssVar = (name: string, fallback: string) => {
+      const value = styles?.getPropertyValue(name).trim();
+      return value || fallback;
+    };
 
-    const error = document.createElement('p');
+    const text = cssVar('--color-text', DEFAULT_THEME_VARIABLES.nodeTextColor);
+    const textMuted = cssVar('--color-text-muted', DEFAULT_THEME_VARIABLES.lineColor);
+    const surface = cssVar('--color-surface', DEFAULT_THEME_VARIABLES.edgeLabelBackground);
+    const surfaceSubtle = cssVar('--color-surface-subtle', DEFAULT_THEME_VARIABLES.mainBkg);
+    const surfaceApp = cssVar('--color-surface-app', DEFAULT_THEME_VARIABLES.tertiaryColor);
+    const accent = cssVar('--color-accent', DEFAULT_THEME_VARIABLES.nodeBorder);
+    const accentStrong = cssVar('--color-accent-strong', DEFAULT_THEME_VARIABLES.secondaryBorderColor);
+    const accentSoft = cssVar('--color-accent-soft', DEFAULT_THEME_VARIABLES.secondaryColor);
+
+    return {
+      ...MERMAID_CONFIG_BASE,
+      themeVariables: {
+        arrowheadColor: textMuted,
+        background: 'transparent',
+        edgeLabelBackground: surface,
+        fontFamily: cssVar('--font-sans', DEFAULT_THEME_VARIABLES.fontFamily),
+        labelTextColor: text,
+        lineColor: textMuted,
+        mainBkg: surfaceSubtle,
+        nodeBorder: accent,
+        nodeTextColor: text,
+        primaryBorderColor: accent,
+        primaryColor: surfaceSubtle,
+        primaryTextColor: text,
+        secondaryBorderColor: accentStrong,
+        secondaryColor: accentSoft,
+        secondaryTextColor: text,
+        tertiaryBorderColor: textMuted,
+        tertiaryColor: surfaceApp,
+        tertiaryTextColor: text,
+      },
+    };
+  }
+
+  private showRenderError(element: HTMLElement): void {
+    element.classList.add('mermaid-source', 'mermaid-source--error');
+
+    const error = this.document.createElement('p');
     error.className = 'mermaid-error';
     error.textContent = 'Mermaid-Diagramm konnte nicht gerendert werden.';
 
-    this.removeExistingError(block);
-    block.insertAdjacentElement('afterend', error);
+    this.removeExistingError(element);
+    element.insertAdjacentElement('afterend', error);
   }
 
-  private removeExistingError(block: HTMLPreElement): void {
-    const nextElement = block.nextElementSibling;
+  private removeExistingError(element: HTMLElement): void {
+    const nextElement = element.nextElementSibling;
     if (nextElement?.classList.contains('mermaid-error')) {
       nextElement.remove();
     }

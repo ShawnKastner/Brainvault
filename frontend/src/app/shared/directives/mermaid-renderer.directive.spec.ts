@@ -9,10 +9,11 @@ import {
 @Component({
   standalone: true,
   imports: [MermaidRendererDirective],
-  template: '<div class="content" [innerHTML]="content" [bvRenderMermaid]="content"></div>',
+  template: '<div class="content" [innerHTML]="content" [bvRenderMermaid]="renderTrigger"></div>',
 })
 class TestHostComponent {
   content = '';
+  renderTrigger: unknown = 0;
 }
 
 describe(MermaidRendererDirective.name, () => {
@@ -86,6 +87,26 @@ describe(MermaidRendererDirective.name, () => {
     );
     expect(host.querySelector('pre')).toBeNull();
     expect(host.querySelector('.mermaid-diagram svg')).not.toBeNull();
+  });
+
+  it('rerenders existing diagrams when the render trigger changes', async () => {
+    fixture.componentInstance.content =
+      '<pre><code class="language-mermaid">graph TD;A--&gt;B</code></pre>';
+    fixture.detectChanges();
+    await flushRenderer();
+
+    fixture.componentInstance.renderTrigger = 1;
+    fixture.detectChanges();
+    await flushRenderer();
+
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(renderSpy).toHaveBeenCalledTimes(2);
+    expect(initializeSpy).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('pre')).toBeNull();
+    expect(
+      (host.querySelector('.mermaid-diagram') as HTMLElement | null)?.dataset['mermaidDefinition'],
+    ).toBe('graph TD;A-->B');
   });
 
   it('ignores regular code blocks', async () => {

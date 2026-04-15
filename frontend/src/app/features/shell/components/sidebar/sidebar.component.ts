@@ -59,6 +59,7 @@ export class SidebarComponent implements OnDestroy {
   readonly createSpace = output<CreateSpaceRequest>();
   readonly deleteSpace = output<SpaceWithPagesResponse>();
   readonly movePageToSpace = output<MovePageToSpaceRequest>();
+  readonly openSettings = output<void>();
 
   readonly showNewSpace = signal(false);
   readonly draggingPage = signal<PendingPageDrag | null>(null);

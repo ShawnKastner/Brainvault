@@ -13,6 +13,7 @@
     (createSpace)="createSpace($event)"
     (deleteSpace)="requestDeleteSpace($event)"
     (movePageToSpace)="movePageToSpace($event)"
+    (openSettings)="settingsOpen.set(true)"
   />
 
   <main class="main">
@@ -90,5 +91,10 @@
     [danger]="true"
     (cancel)="closeDeleteDialog()"
     (confirm)="confirmDelete()"
+  />
+
+  <bv-settings-modal
+    [open]="settingsOpen()"
+    (close)="settingsOpen.set(false)"
   />
 </div>

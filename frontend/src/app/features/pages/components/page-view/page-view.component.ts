@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, inject, input } from '@angular/core';
 import type { PageResponse } from '../../../../core/models/page.model';
 import type { SpaceResponse } from '../../../../core/models/space.model';
+import { SettingsService } from '../../../../core/services/settings.service';
 import { MermaidRendererDirective } from '../../../../shared/directives/mermaid-renderer.directive';
 import { PageContentPipe } from '../../../../shared/pipes/page-content.pipe';
 import { calculateReadingStats } from '../../../../shared/utils/reading-stats';
@@ -15,8 +16,17 @@ import { calculateReadingStats } from '../../../../shared/utils/reading-stats';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PageViewComponent {
+  private readonly settingsService = inject(SettingsService);
+
   readonly page = input.required<PageResponse>();
   readonly space = input<SpaceResponse | null>(null);
+
+  protected readonly showReadingStats = computed(() => this.settingsService.settings().showReadingStats);
+  protected readonly mermaidRenderTrigger = computed(() => ({
+    content: this.page().content,
+    contentFormat: this.page().contentFormat,
+    theme: this.settingsService.theme(),
+  }));
 
   protected readonly readingStats = computed(() => {
     const page = this.page();

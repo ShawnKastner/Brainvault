@@ -1,5 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import { Page } from '../pages/entities/page.entity';
+import { AppSetting } from '../settings/entities/app-setting.entity';
 import { Space } from '../spaces/entities/space.entity';
 import { resolveDbSynchronize } from '../config/env.validation';
 
@@ -13,7 +14,7 @@ export const databaseConfig = registerAs('database', () => {
     database: process.env['DB_NAME'] ?? 'brainvault',
     username: process.env['DB_USER'] ?? 'brainvault',
     password: process.env['DB_PASS'] ?? 'brainvault_secret',
-    entities: [Space, Page],
+    entities: [Space, Page, AppSetting],
     synchronize: resolveDbSynchronize(nodeEnv, process.env['DB_SYNCHRONIZE']),
     logging: nodeEnv === 'development',
   };

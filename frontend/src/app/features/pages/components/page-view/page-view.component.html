@@ -10,12 +10,14 @@
       </span>
     }
     <span class="page-updated">{{ formatDate(page().updatedAt) }}</span>
-    <span class="page-reading-stats" aria-label="Seitenumfang">
-      <span aria-hidden="true">·</span>
-      <span>{{ wordCountLabel() }}</span>
-      <span aria-hidden="true">·</span>
-      <span>{{ readingTimeLabel() }}</span>
-    </span>
+    @if (showReadingStats()) {
+      <span class="page-reading-stats" aria-label="Seitenumfang">
+        <span aria-hidden="true">·</span>
+        <span>{{ wordCountLabel() }}</span>
+        <span aria-hidden="true">·</span>
+        <span>{{ readingTimeLabel() }}</span>
+      </span>
+    }
   </div>
 
   <h1 class="page-title">{{ page().title }}</h1>
@@ -25,7 +27,7 @@
   }
 
   @if (page().content) {
-    <div class="page-body" [innerHTML]="page() | pageContent" [bvRenderMermaid]="page()"></div>
+    <div class="page-body" [innerHTML]="page() | pageContent" [bvRenderMermaid]="mermaidRenderTrigger()"></div>
   } @else {
     <div class="page-empty">
       Noch kein Inhalt. Klicke auf <strong>Bearbeiten</strong>, um loszulegen.

@@ -3,6 +3,7 @@ import { config as loadEnv } from 'dotenv';
 import { DataSource, Repository } from 'typeorm';
 import { resolveDbSynchronize } from './config/env.validation';
 import { Page, PageContentFormat } from './pages/entities/page.entity';
+import { AppSetting } from './settings/entities/app-setting.entity';
 import { Space } from './spaces/entities/space.entity';
 
 loadEnv();
@@ -16,7 +17,7 @@ const dataSource = new DataSource({
   database: process.env['DB_NAME'] ?? 'brainvault',
   username: process.env['DB_USER'] ?? 'brainvault',
   password: process.env['DB_PASS'] ?? 'brainvault_secret',
-  entities: [Space, Page],
+  entities: [Space, Page, AppSetting],
   synchronize: resolveDbSynchronize(nodeEnv, process.env['DB_SYNCHRONIZE']),
 });
 
