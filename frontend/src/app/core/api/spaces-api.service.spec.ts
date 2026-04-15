@@ -39,4 +39,13 @@ describe(SpacesApiService.name, () => {
     expect(request.request.method).toBe('DELETE');
     request.flush(null);
   });
+
+  it('uses PATCH for space updates', () => {
+    service.update('space-1', { name: 'Renamed' }).subscribe();
+
+    const request = http.expectOne('/api/spaces/space-1');
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual({ name: 'Renamed' });
+    request.flush({});
+  });
 });

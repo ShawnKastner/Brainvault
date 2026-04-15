@@ -11,5 +11,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/shell/shell.component').then((module) => module.ShellComponent),
   },
+  {
+    path: 'spaces/:spaceId',
+    loadComponent: () =>
+      import('./features/shell/shell.component').then((module) => module.ShellComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

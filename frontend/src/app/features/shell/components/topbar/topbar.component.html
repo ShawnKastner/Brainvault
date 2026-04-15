@@ -3,7 +3,11 @@
     <span>BrainVault</span>
     @if (activeSpace(); as space) {
       <span class="sep">/</span>
-      <span>{{ space.name }}</span>
+      @if (activePage()) {
+        <a class="breadcrumb-link" [routerLink]="['/spaces', space.id]">{{ space.name }}</a>
+      } @else {
+        <span class="current">{{ space.name }}</span>
+      }
     }
     @if (activePage(); as page) {
       <span class="sep">/</span>

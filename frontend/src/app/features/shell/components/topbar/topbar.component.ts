@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import type { PageResponse } from '../../../../core/models/page.model';
 import type { SpaceResponse } from '../../../../core/models/space.model';
 
 @Component({
   selector: 'bv-topbar',
   standalone: true,
+  imports: [RouterLink],
   templateUrl: './topbar.component.html',
   styleUrl: './topbar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

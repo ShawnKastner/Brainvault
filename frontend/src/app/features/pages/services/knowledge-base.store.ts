@@ -4,7 +4,11 @@ import { EMPTY, Observable, catchError, finalize, map, switchMap, tap } from 'rx
 import { PagesApiService } from '../../../core/api/pages-api.service';
 import { SpacesApiService } from '../../../core/api/spaces-api.service';
 import type { CreatePageRequest, PageResponse, UpdatePageRequest } from '../../../core/models/page.model';
-import type { CreateSpaceRequest, SpaceWithPagesResponse } from '../../../core/models/space.model';
+import type {
+  CreateSpaceRequest,
+  SpaceWithPagesResponse,
+  UpdateSpaceRequest,
+} from '../../../core/models/space.model';
 
 @Injectable({ providedIn: 'root' })
 export class KnowledgeBaseStore {
@@ -13,6 +17,7 @@ export class KnowledgeBaseStore {
 
   readonly spaces = signal<SpaceWithPagesResponse[]>([]);
   readonly activePageId = signal<string | null>(null);
+  readonly activeSpaceId = signal<string | null>(null);
   readonly searchQuery = signal('');
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -44,8 +49,11 @@ export class KnowledgeBaseStore {
 
   readonly activeSpace = computed(() => {
     const activeId = this.activePageId();
-    if (!activeId) return null;
-    return findPage(this.spaces(), activeId)?.space ?? null;
+    if (activeId) return findPage(this.spaces(), activeId)?.space ?? null;
+
+    const activeSpaceId = this.activeSpaceId();
+    if (!activeSpaceId) return null;
+    return this.spaces().find((space) => space.id === activeSpaceId) ?? null;
   });
 
   loadSpaces(preferredPageId?: string | null): void {
@@ -64,6 +72,14 @@ export class KnowledgeBaseStore {
 
   selectPage(pageId: string | null): void {
     this.activePageId.set(pageId);
+    if (pageId) {
+      this.activeSpaceId.set(null);
+    }
+  }
+
+  selectSpace(spaceId: string | null): void {
+    this.activeSpaceId.set(spaceId);
+    this.activePageId.set(null);
   }
 
   setSearchQuery(query: string): void {
@@ -98,6 +114,21 @@ export class KnowledgeBaseStore {
           onDeleted?.(this.activePageId());
         }),
         this.catchStoreError('Der Space konnte nicht gelöscht werden.'),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe();
+  }
+
+  updateSpace(id: string, request: UpdateSpaceRequest): void {
+    this.saving.set(true);
+    this.error.set(null);
+
+    this.spacesApi
+      .update(id, request)
+      .pipe(
+        switchMap(() => this.spacesApi.getAll()),
+        tap((spaces) => this.applySpaces(spaces, this.activePageId())),
+        this.catchStoreError('Der Space konnte nicht gespeichert werden.'),
         finalize(() => this.saving.set(false)),
       )
       .subscribe();
@@ -194,12 +225,22 @@ export class KnowledgeBaseStore {
 
     if (preferredPageId !== undefined) {
       this.activePageId.set(preferredPageId);
+      if (preferredPageId) {
+        this.activeSpaceId.set(null);
+      }
       return;
     }
 
     const currentPageId = this.activePageId();
     if (currentPageId && findPage(spaces, currentPageId)) return;
 
+    const currentSpaceId = this.activeSpaceId();
+    if (currentSpaceId && spaces.some((space) => space.id === currentSpaceId)) {
+      this.activePageId.set(null);
+      return;
+    }
+
+    this.activeSpaceId.set(null);
     this.activePageId.set(getFirstPageId(spaces));
   }
 

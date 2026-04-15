@@ -1,0 +1,69 @@
+<article class="space-overview">
+  <header class="space-hero">
+    <div class="space-meta">
+      <span class="space-color" [style.background]="space().color" aria-hidden="true"></span>
+      <span>{{ documentCountLabel() }}</span>
+    </div>
+
+    @if (renaming()) {
+      <form class="rename-form" (ngSubmit)="submitRename()">
+        <input
+          #renameInput
+          class="rename-input"
+          type="text"
+          maxlength="100"
+          [formControl]="renameControl"
+          [readOnly]="saving()"
+          aria-label="Space umbenennen"
+          (blur)="submitRename()"
+          (keydown.escape)="cancelRename()"
+        />
+      </form>
+    } @else {
+      <h1
+        class="space-title"
+        tabindex="0"
+        role="button"
+        aria-label="Space umbenennen"
+        title="Doppelklick oder Enter zum Umbenennen"
+        (dblclick)="startRename()"
+        (keydown.enter)="startRename()"
+      >
+        {{ space().name }}
+      </h1>
+    }
+
+    @if (space().description) {
+      <p class="space-description">{{ space().description }}</p>
+    }
+  </header>
+
+  <section class="space-documents" aria-labelledby="space-documents-title">
+    <div class="section-heading">
+      <h2 id="space-documents-title">Dokumente</h2>
+    </div>
+
+    @for (page of space().pages; track page.id) {
+      <button type="button" class="document-row" (click)="selectPage.emit(page.id)">
+        <span class="document-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="1" width="12" height="14" rx="2" />
+            <path d="M5 5h6M5 8h6M5 11h3" />
+          </svg>
+        </span>
+        <span class="document-copy">
+          <span class="document-title">{{ page.title }}</span>
+          @if (page.description) {
+            <span class="document-description">{{ page.description }}</span>
+          }
+        </span>
+        <span class="document-date">{{ formatDate(page.updatedAt) }}</span>
+      </button>
+    } @empty {
+      <div class="space-empty">
+        <p>Keine Dokumente in diesem Space.</p>
+        <span>Erstelle eine neue Seite und waehle diesen Space aus.</span>
+      </div>
+    }
+  </section>
+</article>

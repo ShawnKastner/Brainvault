@@ -63,6 +63,13 @@
         } @else {
           <bv-page-view [page]="page" [space]="store.activeSpace()" />
         }
+      } @else if (store.activeSpace(); as space) {
+        <bv-space-overview
+          [space]="space"
+          [saving]="store.saving()"
+          (selectPage)="selectPage($event)"
+          (renameSpace)="renameSpace($event)"
+        />
       } @else if (!store.loading()) {
         <bv-empty-state
           title="Waehle eine Seite aus der Navigation"

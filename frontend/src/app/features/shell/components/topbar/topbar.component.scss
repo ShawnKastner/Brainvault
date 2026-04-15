@@ -24,6 +24,20 @@
   opacity: 0.5;
 }
 
+.breadcrumb-link {
+  border-radius: var(--radius-sm);
+  color: inherit;
+  padding: 0.08rem 0.2rem;
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover,
+.breadcrumb-link:focus-visible {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  outline: none;
+}
+
 .current {
   color: var(--color-text);
   font-weight: 700;

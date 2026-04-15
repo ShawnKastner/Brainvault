@@ -17,6 +17,10 @@ import { ConfirmModalComponent } from '../../shared/ui/confirm-modal/confirm-mod
 import { PageEditorComponent } from '../pages/components/page-editor/page-editor.component';
 import { PageViewComponent } from '../pages/components/page-view/page-view.component';
 import { KnowledgeBaseStore } from '../pages/services/knowledge-base.store';
+import {
+  SpaceOverviewComponent,
+  type RenameSpaceRequest,
+} from '../spaces/components/space-overview/space-overview.component';
 import { SidebarComponent, type MovePageToSpaceRequest } from './components/sidebar/sidebar.component';
 import { TopbarComponent } from './components/topbar/topbar.component';
 
@@ -34,6 +38,7 @@ type DeleteDialog =
     PageViewComponent,
     ReactiveFormsModule,
     SidebarComponent,
+    SpaceOverviewComponent,
     TopbarComponent,
   ],
   templateUrl: './shell.component.html',
@@ -90,14 +95,26 @@ export class ShellComponent {
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const pageId = params.get('pageId');
+      const spaceId = params.get('spaceId');
       this.editMode.set(false);
-      this.store.selectPage(pageId);
-      this.store.loadSpaces(pageId);
+      this.showNewPage.set(false);
+
+      if (pageId) {
+        this.store.selectPage(pageId);
+        this.store.loadSpaces(pageId);
+        return;
+      }
+
+      this.store.selectSpace(spaceId);
+      if (spaceId) {
+        this.openSpaces.update((spaces) => ({ ...spaces, [spaceId]: true }));
+      }
+      this.store.loadSpaces(null);
     });
 
     effect(() => {
       const spaceId = this.store.activeSpace()?.id ?? this.store.spaces()[0]?.id;
-      if (spaceId && !this.newPageForm.controls.spaceId.value) {
+      if (spaceId && this.newPageForm.controls.spaceId.value !== spaceId) {
         this.newPageForm.controls.spaceId.setValue(spaceId, { emitEvent: false });
       }
     });
@@ -132,6 +149,10 @@ export class ShellComponent {
   protected movePageToSpace(request: MovePageToSpaceRequest): void {
     this.openSpaces.update((spaces) => ({ ...spaces, [request.targetSpaceId]: true }));
     this.store.movePageToSpace(request.pageId, request.targetSpaceId);
+  }
+
+  protected renameSpace(request: RenameSpaceRequest): void {
+    this.store.updateSpace(request.id, { name: request.name });
   }
 
   protected submitNewPage(): void {

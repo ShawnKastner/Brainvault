@@ -86,7 +86,12 @@ describe(KnowledgeBaseStore.name, () => {
   let pagesApi: jasmine.SpyObj<PagesApiService>;
 
   beforeEach(() => {
-    spacesApi = jasmine.createSpyObj<SpacesApiService>('SpacesApiService', ['getAll', 'create', 'remove']);
+    spacesApi = jasmine.createSpyObj<SpacesApiService>('SpacesApiService', [
+      'getAll',
+      'create',
+      'remove',
+      'update',
+    ]);
     pagesApi = jasmine.createSpyObj<PagesApiService>('PagesApiService', [
       'create',
       'update',
@@ -120,6 +125,37 @@ describe(KnowledgeBaseStore.name, () => {
     store.setSearchQuery('nestjs');
 
     expect(store.filteredSpaces()[0].pages[0].title).toBe('NestJS Architektur');
+  });
+
+  it('selects a space without selecting a page', () => {
+    store.spaces.set(spacesForMove);
+
+    store.selectSpace('space-2');
+
+    expect(store.activeSpace()).toEqual(spacesForMove[1]);
+    expect(store.activePage()).toBeNull();
+    expect(store.activePageId()).toBeNull();
+  });
+
+  it('updates a space and keeps the active space selected', () => {
+    const updatedSpaces = [
+      {
+        ...spaces[0],
+        name: 'Engineering',
+      },
+    ];
+    store.spaces.set(spaces);
+    store.selectSpace('space-1');
+    spacesApi.update.and.returnValue(of(updatedSpaces[0]));
+    spacesApi.getAll.and.returnValue(of(updatedSpaces));
+
+    store.updateSpace('space-1', { name: 'Engineering' });
+
+    expect(spacesApi.update).toHaveBeenCalledWith('space-1', { name: 'Engineering' });
+    expect(store.spaces()).toEqual(updatedSpaces);
+    expect(store.activeSpace()).toEqual(updatedSpaces[0]);
+    expect(store.activePageId()).toBeNull();
+    expect(store.saving()).toBeFalse();
   });
 
   it('deletes a space and selects the first remaining page', () => {
