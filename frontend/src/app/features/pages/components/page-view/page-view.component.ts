@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, ViewEncapsulation, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, input } from '@angular/core';
 import type { PageResponse } from '../../../../core/models/page.model';
 import type { SpaceResponse } from '../../../../core/models/space.model';
 import { PageContentPipe } from '../../../../shared/pipes/page-content.pipe';
+import { calculateReadingStats } from '../../../../shared/utils/reading-stats';
 
 @Component({
   selector: 'bv-page-view',
@@ -15,6 +16,23 @@ import { PageContentPipe } from '../../../../shared/pipes/page-content.pipe';
 export class PageViewComponent {
   readonly page = input.required<PageResponse>();
   readonly space = input<SpaceResponse | null>(null);
+
+  protected readonly readingStats = computed(() => {
+    const page = this.page();
+    return calculateReadingStats(page.content, page.contentFormat);
+  });
+
+  protected readonly wordCountLabel = computed(() => {
+    const count = this.readingStats().wordCount;
+    return count === 1 ? '1 Wort' : `${count} Wörter`;
+  });
+
+  protected readonly readingTimeLabel = computed(() => {
+    const minutes = this.readingStats().readingTimeMinutes;
+    if (minutes === 0) return '0 Min. Lesezeit';
+    if (minutes === 1) return 'ca. 1 Min. Lesezeit';
+    return `ca. ${minutes} Min. Lesezeit`;
+  });
 
   formatDate(date: string): string {
     return new Date(date).toLocaleDateString('de-DE', {

@@ -6,7 +6,7 @@ const page: PageResponse = {
   id: 'page-1',
   title: 'Markdown Notizen',
   description: 'Beschreibung',
-  content: '## Ueberschrift',
+  content: '## Ueberschrift\n\nZwei Wörter',
   contentFormat: 'markdown',
   tags: ['markdown'],
   spaceId: 'space-1',
@@ -31,5 +31,12 @@ describe(PageViewComponent.name, () => {
 
   it('renders markdown content', () => {
     expect(fixture.nativeElement.textContent).toContain('Ueberschrift');
+  });
+
+  it('renders word count and reading time in the meta row', () => {
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('3 Wörter');
+    expect(text).toContain('ca. 1 Min. Lesezeit');
   });
 });

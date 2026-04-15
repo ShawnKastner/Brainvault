@@ -24,10 +24,17 @@
   padding: 0.2rem 0.55rem;
 }
 
-.page-updated {
+.page-updated,
+.page-reading-stats {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: 0.72rem;
+}
+
+.page-reading-stats {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
 }
 
 .page-title {

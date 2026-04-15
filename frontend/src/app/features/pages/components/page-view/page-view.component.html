@@ -10,6 +10,12 @@
       </span>
     }
     <span class="page-updated">{{ formatDate(page().updatedAt) }}</span>
+    <span class="page-reading-stats" aria-label="Seitenumfang">
+      <span aria-hidden="true">·</span>
+      <span>{{ wordCountLabel() }}</span>
+      <span aria-hidden="true">·</span>
+      <span>{{ readingTimeLabel() }}</span>
+    </span>
   </div>
 
   <h1 class="page-title">{{ page().title }}</h1>
