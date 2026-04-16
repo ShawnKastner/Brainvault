@@ -33,6 +33,8 @@ npm install
 npm run start:dev
 ```
 
+Offene Datenbank-Migrationen laufen beim Backend-Start automatisch.
+
 ### Frontend
 
 ```bash
@@ -94,9 +96,20 @@ brainvault/
 
 ## Konfiguration
 
-`DB_SYNCHRONIZE` ist in Development standardmaessig aktiv und in Production standardmaessig deaktiviert. In Production wird `DB_SYNCHRONIZE=true` beim Start abgelehnt.
+`DB_MIGRATIONS_RUN` steuert, ob offene TypeORM-Migrationen beim Backend-Start automatisch laufen. Der Default ist `true`.
 
 Das Frontend nutzt relativ `/api`; lokal leitet `proxy.conf.json` auf `http://localhost:3000` weiter, im Docker-Setup uebernimmt nginx den Proxy zum Backend.
+
+## Migrationen
+
+```bash
+cd backend
+npm run migration:run
+npm run migration:revert
+npm run migration:generate -- src/database/migrations/AddMigrationName
+```
+
+Die erste Migration bildet die aktuelle DB-Struktur ab und ist so geschrieben, dass eine bereits vorhandene aktuelle Datenbank nicht neu erstellt oder geleert wird.
 
 ## Checks
 

@@ -1,5 +1,8 @@
 type Environment = 'development' | 'production' | 'test';
 
+const trueValues = ['true', '1', 'yes'];
+const falseValues = ['false', '0', 'no'];
+
 function readString(config: Record<string, unknown>, key: string, fallback: string): string {
   const value = config[key];
   return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
@@ -25,31 +28,25 @@ function readEnvironment(config: Record<string, unknown>): Environment {
   throw new Error('NODE_ENV must be one of development, production, or test');
 }
 
-export function resolveDbSynchronize(environment: string, value?: unknown): boolean {
+export function resolveDbMigrationsRun(value?: unknown): boolean {
   if (value === undefined || value === null || value === '') {
-    return environment !== 'production';
+    return true;
   }
 
   if (typeof value === 'boolean') {
-    if (environment === 'production' && value) {
-      throw new Error('DB_SYNCHRONIZE cannot be true in production');
-    }
     return value;
   }
 
   const normalized = String(value).trim().toLowerCase();
-  if (['true', '1', 'yes'].includes(normalized)) {
-    if (environment === 'production') {
-      throw new Error('DB_SYNCHRONIZE cannot be true in production');
-    }
+  if (trueValues.includes(normalized)) {
     return true;
   }
 
-  if (['false', '0', 'no'].includes(normalized)) {
+  if (falseValues.includes(normalized)) {
     return false;
   }
 
-  throw new Error('DB_SYNCHRONIZE must be a boolean value');
+  throw new Error('DB_MIGRATIONS_RUN must be a boolean value');
 }
 
 export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {
@@ -64,7 +61,7 @@ export function validateEnvironment(config: Record<string, unknown>): Record<str
     DB_NAME: readString(config, 'DB_NAME', 'brainvault'),
     DB_USER: readString(config, 'DB_USER', 'brainvault'),
     DB_PASS: readString(config, 'DB_PASS', 'brainvault_secret'),
-    DB_SYNCHRONIZE: resolveDbSynchronize(nodeEnv, config['DB_SYNCHRONIZE']),
+    DB_MIGRATIONS_RUN: resolveDbMigrationsRun(config['DB_MIGRATIONS_RUN']),
     CORS_ORIGINS: readString(
       config,
       'CORS_ORIGINS',
