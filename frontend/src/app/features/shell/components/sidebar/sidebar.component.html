@@ -20,43 +20,83 @@
     @if (loading()) {
       <bv-loading-state />
     } @else {
-      @for (space of spaces(); track space.id; let first = $first) {
-        <section class="nav-section">
-          <div
-            class="nav-section-header"
-            data-space-drop-target
-            [attr.data-space-id]="space.id"
-            [class.drop-target]="dropTargetSpaceId() === space.id"
-          >
-            <button
-              type="button"
-              class="nav-section-toggle"
-              [attr.aria-expanded]="openSpaces()[space.id] ?? first"
-              (click)="toggleSpace.emit(space.id)"
-            >
-              <svg class="nav-chevron" [class.open]="openSpaces()[space.id] ?? first" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <path d="M6 4l4 4-4 4V4z" />
-              </svg>
-              <span class="nav-dot" [style.background]="space.color"></span>
-              <span class="nav-section-label">{{ space.name }}</span>
-              <span class="nav-count">{{ space.pages.length }}</span>
-            </button>
-            <button
-              type="button"
-              class="nav-section-delete"
-              [disabled]="saving()"
-              [attr.aria-label]="'Space ' + space.name + ' löschen'"
-              (click)="requestDeleteSpace(space, $event)"
-            >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path d="M6.4 2.4h3.2l.6 1.2H14M2 3.6h12M4 5.8l.5 7.2h7l.5-7.2" />
-                <path d="M6.5 7.2v3.9M9.5 7.2v3.9" />
-              </svg>
-            </button>
-          </div>
+      @if (spaces().length > 0) {
+        <ng-container
+          [ngTemplateOutlet]="spaceTree"
+          [ngTemplateOutletContext]="{ $implicit: spaces(), depth: 0 }"
+        ></ng-container>
+      } @else {
+        <p class="nav-empty root">Noch keine Spaces vorhanden.</p>
+      }
 
-          @if ((openSpaces()[space.id] ?? first) || searchQuery()) {
-            <div class="nav-items">
+      <button type="button" class="new-space-button" (click)="startCreateSpace()">
+        + Space hinzufügen
+      </button>
+    }
+
+    @if (showNewSpace()) {
+      <ng-container
+        [ngTemplateOutlet]="spaceFormTemplate"
+        [ngTemplateOutletContext]="{ placeholder: 'Space-Name' }"
+      ></ng-container>
+    }
+  </nav>
+
+  <ng-template #spaceTree let-spaceList let-depth="depth">
+    @for (space of spaceList; track space.id; let first = $first) {
+      <section class="nav-section">
+        <div
+          class="nav-section-header"
+          data-space-drop-target
+          [attr.data-space-id]="space.id"
+          [class.drop-target]="dropTargetSpaceId() === space.id"
+          [class.active]="activeSpaceId() === space.id && activePageId() === null"
+          [style.padding-left.rem]="0.55 + depth * 0.75"
+        >
+          <button
+            type="button"
+            class="nav-section-expander"
+            [disabled]="!hasSpaceContent(space)"
+            [attr.aria-expanded]="isSpaceOpen(space, depth, first)"
+            [attr.aria-label]="space.name + ' ein- oder ausklappen'"
+            (click)="toggleSpace.emit(space.id)"
+          >
+            <svg
+              class="nav-chevron"
+              [class.open]="isSpaceOpen(space, depth, first)"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M6 4l4 4-4 4V4z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="nav-section-link"
+            (click)="selectSpaceFromClick(space.id, $event)"
+          >
+            <span class="nav-dot" [style.background]="space.color"></span>
+            <span class="nav-section-label">{{ space.name }}</span>
+            <span class="nav-count">{{ space.pages.length }}</span>
+          </button>
+          <button
+            type="button"
+            class="nav-section-delete"
+            [disabled]="saving()"
+            [attr.aria-label]="'Space ' + space.name + ' löschen'"
+            (click)="requestDeleteSpace(space, $event)"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M6.4 2.4h3.2l.6 1.2H14M2 3.6h12M4 5.8l.5 7.2h7l.5-7.2" />
+              <path d="M6.5 7.2v3.9M9.5 7.2v3.9" />
+            </svg>
+          </button>
+        </div>
+
+        @if (isSpaceOpen(space, depth, first) || searchQuery()) {
+          @if (space.pages.length > 0) {
+            <div class="nav-items" [style.padding-left.rem]="1.6 + depth * 0.75">
               @for (page of space.pages; track page.id) {
                 <button
                   type="button"
@@ -73,37 +113,40 @@
                   </svg>
                   <span class="nav-item-label">{{ page.title }}</span>
                 </button>
-              } @empty {
-                <span class="nav-empty">Keine Treffer</span>
               }
             </div>
           }
-        </section>
-      } @empty {
-        <p class="nav-empty root">Noch keine Spaces vorhanden.</p>
-      }
 
-      <button type="button" class="new-space-button" (click)="showNewSpace.set(!showNewSpace())">
-        + Space hinzufügen
-      </button>
-    }
+          @if (space.children.length > 0) {
+            <ng-container
+              [ngTemplateOutlet]="spaceTree"
+              [ngTemplateOutletContext]="{ $implicit: space.children, depth: depth + 1 }"
+            ></ng-container>
+          }
 
-    @if (showNewSpace()) {
-      <form class="inline-form" [formGroup]="spaceForm" (ngSubmit)="submitSpace()">
-        <input class="inline-input" formControlName="name" placeholder="Space-Name" />
-        <label class="color-row">
-          <span>Farbe</span>
-          <input type="color" class="color-picker" formControlName="color" />
-        </label>
-        <div class="inline-actions">
-          <button type="submit" class="button primary" [disabled]="saving() || spaceForm.invalid">
-            Erstellen
-          </button>
-          <button type="button" class="button" (click)="showNewSpace.set(false)">Abbrechen</button>
-        </div>
-      </form>
+          @if (space.pages.length === 0 && space.children.length === 0 && searchQuery()) {
+            <span class="nav-empty" [style.padding-left.rem]="1.1 + depth * 0.75">Keine Treffer</span>
+          }
+        }
+      </section>
     }
-  </nav>
+  </ng-template>
+
+  <ng-template #spaceFormTemplate let-placeholder="placeholder" let-depth="depth">
+    <form class="inline-form" [style.padding-left.rem]="0.75 + (depth ?? 0) * 0.75" [formGroup]="spaceForm" (ngSubmit)="submitSpace()">
+      <input class="inline-input" formControlName="name" [placeholder]="placeholder" />
+      <label class="color-row">
+        <span>Farbe</span>
+        <input type="color" class="color-picker" formControlName="color" />
+      </label>
+      <div class="inline-actions">
+        <button type="submit" class="button primary" [disabled]="saving() || spaceForm.invalid">
+          Erstellen
+        </button>
+        <button type="button" class="button" (click)="cancelCreateSpace()">Abbrechen</button>
+      </div>
+    </form>
+  </ng-template>
 
   @if (dragPreview(); as preview) {
     <div

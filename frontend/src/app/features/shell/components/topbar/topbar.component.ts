@@ -12,7 +12,7 @@ import type { SpaceResponse } from '../../../../core/models/space.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TopbarComponent {
-  readonly activeSpace = input<SpaceResponse | null>(null);
+  readonly activeSpacePath = input<SpaceResponse[]>([]);
   readonly activePage = input<PageResponse | null>(null);
   readonly editMode = input(false);
   readonly saving = input(false);

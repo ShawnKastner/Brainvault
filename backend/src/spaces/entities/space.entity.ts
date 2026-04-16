@@ -2,6 +2,8 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -24,6 +26,16 @@ export class Space {
 
   @Column({ default: 0 })
   sortOrder: number;
+
+  @Column({ type: 'uuid', nullable: true })
+  parentId: string | null;
+
+  @ManyToOne(() => Space, (space) => space.children, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'parentId' })
+  parent: Space | null;
+
+  @OneToMany(() => Space, (space) => space.parent)
+  children: Space[];
 
   @CreateDateColumn()
   createdAt: Date;

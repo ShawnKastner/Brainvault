@@ -7,6 +7,7 @@ import {
   signal,
   inject,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { PageResponse } from '../../../../core/models/page.model';
 import type { CreateSpaceRequest, SpaceWithPagesResponse } from '../../../../core/models/space.model';
@@ -35,7 +36,7 @@ interface DragPreview {
 @Component({
   selector: 'bv-sidebar',
   standalone: true,
-  imports: [ReactiveFormsModule, LoadingStateComponent],
+  imports: [NgTemplateOutlet, ReactiveFormsModule, LoadingStateComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,9 +52,11 @@ export class SidebarComponent implements OnDestroy {
   readonly dragDisabled = input(false);
   readonly openSpaces = input<Partial<Record<string, boolean>>>({});
   readonly activePageId = input<string | null>(null);
+  readonly activeSpaceId = input<string | null>(null);
   readonly searchQuery = input('');
 
   readonly selectPage = output<string>();
+  readonly selectSpace = output<string>();
   readonly toggleSpace = output<string>();
   readonly searchQueryChange = output<string>();
   readonly createSpace = output<CreateSpaceRequest>();
@@ -83,6 +86,8 @@ export class SidebarComponent implements OnDestroy {
   }
 
   submitSpace(): void {
+    if (!this.showNewSpace()) return;
+
     if (this.spaceForm.invalid) {
       this.spaceForm.markAllAsTouched();
       return;
@@ -92,9 +97,28 @@ export class SidebarComponent implements OnDestroy {
     this.createSpace.emit({
       name: value.name.trim(),
       color: value.color,
+      parentId: null,
     });
     this.spaceForm.reset({ name: '', color: '#378ADD' });
     this.showNewSpace.set(false);
+  }
+
+  startCreateSpace(event?: Event): void {
+    event?.stopPropagation();
+    this.showNewSpace.update((visible) => !visible);
+    this.spaceForm.reset({ name: '', color: '#378ADD' });
+  }
+
+  cancelCreateSpace(): void {
+    this.showNewSpace.set(false);
+  }
+
+  isSpaceOpen(space: SpaceWithPagesResponse, depth: number, first: boolean): boolean {
+    return this.openSpaces()[space.id] ?? (depth === 0 && first);
+  }
+
+  hasSpaceContent(space: SpaceWithPagesResponse): boolean {
+    return space.pages.length > 0 || space.children.length > 0;
   }
 
   updateSearch(event: Event): void {
@@ -104,6 +128,11 @@ export class SidebarComponent implements OnDestroy {
   requestDeleteSpace(space: SpaceWithPagesResponse, event: Event): void {
     event.stopPropagation();
     this.deleteSpace.emit(space);
+  }
+
+  selectSpaceFromClick(spaceId: string, event: Event): void {
+    event.stopPropagation();
+    this.selectSpace.emit(spaceId);
   }
 
   selectPageFromClick(pageId: string, event: MouseEvent): void {

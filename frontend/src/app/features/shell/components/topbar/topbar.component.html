@@ -1,9 +1,9 @@
 <header class="topbar">
   <nav class="breadcrumb" aria-label="Breadcrumb">
     <span>BrainVault</span>
-    @if (activeSpace(); as space) {
+    @for (space of activeSpacePath(); track space.id; let last = $last) {
       <span class="sep">/</span>
-      @if (activePage()) {
+      @if (activePage() || !last) {
         <a class="breadcrumb-link" [routerLink]="['/spaces', space.id]">{{ space.name }}</a>
       } @else {
         <span class="current">{{ space.name }}</span>

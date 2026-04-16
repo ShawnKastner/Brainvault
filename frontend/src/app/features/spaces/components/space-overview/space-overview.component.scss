@@ -73,10 +73,15 @@
   margin: 0.65rem 0 0;
 }
 
+.space-children,
 .space-documents {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+}
+
+.space-children {
+  margin-bottom: 1.5rem;
 }
 
 .section-heading {
@@ -91,6 +96,160 @@
   font-size: 0.88rem;
   font-weight: 700;
   margin: 0;
+}
+
+.subspace-create-button {
+  background: transparent;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.subspace-create-button:hover,
+.subspace-create-button:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+  outline: none;
+}
+
+.subspace-create-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.subspace-form {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 12rem) auto;
+}
+
+.subspace-input,
+.subspace-color-picker {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font: inherit;
+  outline: none;
+}
+
+.subspace-input {
+  font-size: 0.82rem;
+  padding: 0.5rem;
+}
+
+.subspace-input:focus,
+.subspace-color-picker:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-ring);
+}
+
+.subspace-color-row {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.5rem;
+}
+
+.subspace-color-picker {
+  cursor: pointer;
+  flex: 1;
+  height: 2rem;
+  padding: 0.125rem;
+}
+
+.subspace-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.subspace-actions .button {
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.subspace-empty {
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  padding: 0.85rem;
+}
+
+.subspace-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.subspace-row {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+}
+
+.subspace-row:hover,
+.subspace-row:focus-visible {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.subspace-color {
+  border-radius: 50%;
+  flex: 0 0 auto;
+  height: 0.62rem;
+  width: 0.62rem;
+}
+
+.subspace-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.subspace-title,
+.subspace-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subspace-title {
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.subspace-description {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.subspace-count {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.08rem 0.38rem;
 }
 
 .document-row {
@@ -192,5 +351,13 @@
 
   .document-date {
     display: none;
+  }
+
+  .subspace-form {
+    grid-template-columns: 1fr;
+  }
+
+  .subspace-actions .button {
+    flex: 1;
   }
 }

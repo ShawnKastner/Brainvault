@@ -1,4 +1,4 @@
-import { IsHexColor, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { IsHexColor, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSpaceDto {
@@ -23,4 +23,9 @@ export class CreateSpaceDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @ApiPropertyOptional({ example: '6f27ef68-7719-48da-9f58-8ca0605f5b22', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  parentId?: string | null;
 }

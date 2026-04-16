@@ -17,6 +17,9 @@ export class SpaceResponseDto {
   @ApiProperty()
   sortOrder: number;
 
+  @ApiPropertyOptional({ nullable: true })
+  parentId: string | null;
+
   @ApiProperty()
   createdAt: string;
 
@@ -27,4 +30,7 @@ export class SpaceResponseDto {
 export class SpaceWithPagesResponseDto extends SpaceResponseDto {
   @ApiProperty({ type: [PageResponseDto] })
   pages: PageResponseDto[];
+
+  @ApiProperty({ type: () => [SpaceWithPagesResponseDto] })
+  children: SpaceWithPagesResponseDto[];
 }

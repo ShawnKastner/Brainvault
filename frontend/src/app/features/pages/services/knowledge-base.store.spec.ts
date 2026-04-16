@@ -32,44 +32,45 @@ const page2: PageResponse = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
-const spaces: SpaceWithPagesResponse[] = [
-  {
+function createSpaceFixture(overrides: Partial<SpaceWithPagesResponse> = {}): SpaceWithPagesResponse {
+  return {
     id: 'space-1',
     name: 'Development',
     description: null,
     color: '#378ADD',
     sortOrder: 0,
+    parentId: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
-    pages: [page1],
-  },
+    pages: [],
+    children: [],
+    ...overrides,
+  };
+}
+
+const spaces: SpaceWithPagesResponse[] = [
+  createSpaceFixture({ pages: [page1] }),
 ];
 
 const spacesAfterDelete: SpaceWithPagesResponse[] = [
-  {
+  createSpaceFixture({
     id: 'space-2',
     name: 'Operations',
-    description: null,
     color: '#BA7517',
     sortOrder: 1,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
     pages: [{ ...page2, sortOrder: 0 }],
-  },
+  }),
 ];
 
 const spacesForMove: SpaceWithPagesResponse[] = [
   spaces[0],
-  {
+  createSpaceFixture({
     id: 'space-2',
     name: 'Operations',
-    description: null,
     color: '#BA7517',
     sortOrder: 1,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
     pages: [page2],
-  },
+  }),
 ];
 
 const spacesAfterMove: SpaceWithPagesResponse[] = [
@@ -127,6 +128,31 @@ describe(KnowledgeBaseStore.name, () => {
     expect(store.filteredSpaces()[0].pages[0].title).toBe('NestJS Architektur');
   });
 
+  it('keeps ancestor spaces when filtering nested matches', () => {
+    const nestedSpaces = [
+      createSpaceFixture({
+        id: 'space-root',
+        name: 'Root',
+        pages: [],
+        children: [
+          createSpaceFixture({
+            id: 'space-child',
+            name: 'Child',
+            parentId: 'space-root',
+            pages: [{ ...page1, spaceId: 'space-child' }],
+          }),
+        ],
+      }),
+    ];
+    store.spaces.set(nestedSpaces);
+
+    store.setSearchQuery('nestjs');
+
+    expect(store.filteredSpaces()[0].id).toBe('space-root');
+    expect(store.filteredSpaces()[0].children[0].id).toBe('space-child');
+    expect(store.filteredSpaces()[0].children[0].pages[0].id).toBe('page-1');
+  });
+
   it('selects a space without selecting a page', () => {
     store.spaces.set(spacesForMove);
 
@@ -135,6 +161,54 @@ describe(KnowledgeBaseStore.name, () => {
     expect(store.activeSpace()).toEqual(spacesForMove[1]);
     expect(store.activePage()).toBeNull();
     expect(store.activePageId()).toBeNull();
+  });
+
+  it('finds active pages and paths recursively', () => {
+    const nestedSpaces = [
+      createSpaceFixture({
+        id: 'space-root',
+        name: 'Root',
+        pages: [],
+        children: [
+          createSpaceFixture({
+            id: 'space-child',
+            name: 'Child',
+            parentId: 'space-root',
+            pages: [{ ...page1, spaceId: 'space-child' }],
+          }),
+        ],
+      }),
+    ];
+    store.spaces.set(nestedSpaces);
+
+    store.selectPage('page-1');
+
+    expect(store.activeSpace()?.id).toBe('space-child');
+    expect(store.activeSpacePath().map((space) => space.id)).toEqual(['space-root', 'space-child']);
+  });
+
+  it('creates subspaces and selects the created space', () => {
+    const created = createSpaceFixture({
+      id: 'space-child',
+      name: 'Child',
+      parentId: 'space-1',
+    });
+    const updatedSpaces = [
+      createSpaceFixture({
+        pages: [],
+        children: [created],
+      }),
+    ];
+    const callback = jasmine.createSpy('created');
+    spacesApi.create.and.returnValue(of(created));
+    spacesApi.getAll.and.returnValue(of(updatedSpaces));
+
+    store.createSpace({ name: 'Child', parentId: 'space-1' }, callback);
+
+    expect(spacesApi.create).toHaveBeenCalledWith({ name: 'Child', parentId: 'space-1' });
+    expect(store.activeSpace()?.id).toBe('space-child');
+    expect(store.activePageId()).toBeNull();
+    expect(callback).toHaveBeenCalledWith(created);
   });
 
   it('updates a space and keeps the active space selected', () => {
@@ -200,6 +274,34 @@ describe(KnowledgeBaseStore.name, () => {
     expect(store.spaces()).toEqual(spacesAfterMove);
     expect(store.activePageId()).toBe('page-1');
     expect(store.saving()).toBeFalse();
+  });
+
+  it('moves a page to the end of a nested target space', () => {
+    const nestedTarget = createSpaceFixture({
+      id: 'space-child',
+      name: 'Child',
+      parentId: 'space-2',
+      pages: [{ ...page2, spaceId: 'space-child', sortOrder: 3 }],
+    });
+    const nestedSpaces = [
+      spacesForMove[0],
+      {
+        ...spacesForMove[1],
+        pages: [],
+        children: [nestedTarget],
+      },
+    ];
+    store.spaces.set(nestedSpaces);
+    store.activePageId.set('page-1');
+    pagesApi.update.and.returnValue(of({ ...page1, spaceId: 'space-child', sortOrder: 4 }));
+    spacesApi.getAll.and.returnValue(of(nestedSpaces));
+
+    store.movePageToSpace('page-1', 'space-child');
+
+    expect(pagesApi.update).toHaveBeenCalledWith('page-1', {
+      spaceId: 'space-child',
+      sortOrder: 4,
+    });
   });
 
   it('does not call the API when moving a page to its current space', () => {

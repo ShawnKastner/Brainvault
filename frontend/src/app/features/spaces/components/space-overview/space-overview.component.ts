@@ -4,12 +4,13 @@ import {
   ElementRef,
   ViewChild,
   computed,
+  inject,
   input,
   output,
   signal,
 } from '@angular/core';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import type { SpaceWithPagesResponse } from '../../../../core/models/space.model';
+import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import type { CreateSpaceRequest, SpaceWithPagesResponse } from '../../../../core/models/space.model';
 
 export interface RenameSpaceRequest {
   id: string;
@@ -25,23 +26,31 @@ export interface RenameSpaceRequest {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SpaceOverviewComponent {
+  private readonly formBuilder = inject(NonNullableFormBuilder);
+
   readonly space = input.required<SpaceWithPagesResponse>();
   readonly saving = input(false);
 
   readonly selectPage = output<string>();
+  readonly selectSpace = output<string>();
   readonly renameSpace = output<RenameSpaceRequest>();
+  readonly createSubspace = output<CreateSpaceRequest>();
 
   protected readonly renaming = signal(false);
+  protected readonly creatingSubspace = signal(false);
   protected readonly renameControl = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required, Validators.maxLength(100)],
   });
+  protected readonly subspaceForm = this.formBuilder.group({
+    name: ['', [Validators.required, Validators.maxLength(100)]],
+    color: ['#378ADD', Validators.required],
+  });
 
   protected readonly documentCountLabel = computed(() => {
-    const count = this.space().pages.length;
-    if (count === 0) return 'Keine Dokumente';
-    if (count === 1) return '1 Dokument';
-    return `${count} Dokumente`;
+    const pageCount = this.space().pages.length;
+    const childCount = this.space().children.length;
+    return `${formatDocumentCount(pageCount)} · ${formatSubspaceCount(childCount)}`;
   });
 
   @ViewChild('renameInput') private renameInput?: ElementRef<HTMLInputElement>;
@@ -82,6 +91,35 @@ export class SpaceOverviewComponent {
     this.renameControl.setValue(this.space().name);
   }
 
+  startCreateSubspace(): void {
+    if (this.saving()) return;
+
+    this.subspaceForm.reset({ name: '', color: this.space().color });
+    this.creatingSubspace.set(true);
+  }
+
+  submitSubspace(): void {
+    if (!this.creatingSubspace() || this.saving()) return;
+
+    if (this.subspaceForm.invalid) {
+      this.subspaceForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.subspaceForm.getRawValue();
+    this.createSubspace.emit({
+      name: value.name.trim(),
+      color: value.color,
+      parentId: this.space().id,
+    });
+    this.cancelCreateSubspace();
+  }
+
+  cancelCreateSubspace(): void {
+    this.creatingSubspace.set(false);
+    this.subspaceForm.reset({ name: '', color: '#378ADD' });
+  }
+
   formatDate(date: string): string {
     return new Date(date).toLocaleDateString('de-DE', {
       day: '2-digit',
@@ -89,4 +127,16 @@ export class SpaceOverviewComponent {
       year: 'numeric',
     });
   }
+}
+
+function formatDocumentCount(count: number): string {
+  if (count === 0) return 'Keine Dokumente';
+  if (count === 1) return '1 Dokument';
+  return `${count} Dokumente`;
+}
+
+function formatSubspaceCount(count: number): string {
+  if (count === 0) return 'Keine Unterspaces';
+  if (count === 1) return '1 Unterspace';
+  return `${count} Unterspaces`;
 }

@@ -38,6 +38,57 @@
     }
   </header>
 
+  <section class="space-children" aria-labelledby="space-children-title">
+    <div class="section-heading">
+      <h2 id="space-children-title">Unterspaces</h2>
+      <button
+        type="button"
+        class="subspace-create-button"
+        [disabled]="saving()"
+        (click)="startCreateSubspace()"
+      >
+        + Unterspace erstellen
+      </button>
+    </div>
+
+    @if (creatingSubspace()) {
+      <form class="subspace-form" [formGroup]="subspaceForm" (ngSubmit)="submitSubspace()">
+        <input class="subspace-input" formControlName="name" placeholder="Unterspace-Name" />
+        <label class="subspace-color-row">
+          <span>Farbe</span>
+          <input type="color" class="subspace-color-picker" formControlName="color" />
+        </label>
+        <div class="subspace-actions">
+          <button type="submit" class="button primary" [disabled]="saving() || subspaceForm.invalid">
+            Erstellen
+          </button>
+          <button type="button" class="button" (click)="cancelCreateSubspace()">Abbrechen</button>
+        </div>
+      </form>
+    }
+
+    @if (space().children.length > 0) {
+      <div class="subspace-grid">
+        @for (child of space().children; track child.id) {
+          <button type="button" class="subspace-row" (click)="selectSpace.emit(child.id)">
+            <span class="subspace-color" [style.background]="child.color" aria-hidden="true"></span>
+            <span class="subspace-copy">
+              <span class="subspace-title">{{ child.name }}</span>
+              @if (child.description) {
+                <span class="subspace-description">{{ child.description }}</span>
+              }
+            </span>
+            <span class="subspace-count">{{ child.pages.length }}</span>
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="subspace-empty">
+        <span>Noch keine Unterspaces.</span>
+      </div>
+    }
+  </section>
+
   <section class="space-documents" aria-labelledby="space-documents-title">
     <div class="section-heading">
       <h2 id="space-documents-title">Dokumente</h2>

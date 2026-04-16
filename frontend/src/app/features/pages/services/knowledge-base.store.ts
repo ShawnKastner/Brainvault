@@ -10,6 +10,12 @@ import type {
   UpdateSpaceRequest,
 } from '../../../core/models/space.model';
 
+export interface FlattenedSpace {
+  space: SpaceWithPagesResponse;
+  depth: number;
+  path: SpaceWithPagesResponse[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class KnowledgeBaseStore {
   private readonly pagesApi = inject(PagesApiService);
@@ -23,22 +29,16 @@ export class KnowledgeBaseStore {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
 
+  readonly flattenedSpaces = computed(() => flattenSpaces(this.spaces()));
+  readonly allSpaces = computed(() => this.flattenedSpaces().map((entry) => entry.space));
+
   readonly filteredSpaces = computed(() => {
     const query = normalizeSearch(this.searchQuery());
     if (!query) return this.spaces();
 
     return this.spaces()
-      .map((space) => {
-        const spaceMatches = matchesQuery([space.name, space.description], query);
-        const pages = spaceMatches
-          ? space.pages
-          : space.pages.filter((page) =>
-              matchesQuery([page.title, page.description, page.content, page.tags.join(' ')], query),
-            );
-
-        return { ...space, pages };
-      })
-      .filter((space) => space.pages.length > 0 || matchesQuery([space.name, space.description], query));
+      .map((space) => filterSpaceTree(space, query))
+      .filter((space): space is SpaceWithPagesResponse => space !== null);
   });
 
   readonly activePage = computed(() => {
@@ -47,13 +47,18 @@ export class KnowledgeBaseStore {
     return findPage(this.spaces(), activeId)?.page ?? null;
   });
 
-  readonly activeSpace = computed(() => {
-    const activeId = this.activePageId();
-    if (activeId) return findPage(this.spaces(), activeId)?.space ?? null;
+  readonly activeSpacePath = computed(() => {
+    const activePageId = this.activePageId();
+    if (activePageId) return findPage(this.spaces(), activePageId)?.path ?? [];
 
     const activeSpaceId = this.activeSpaceId();
-    if (!activeSpaceId) return null;
-    return this.spaces().find((space) => space.id === activeSpaceId) ?? null;
+    if (!activeSpaceId) return [];
+    return findSpacePath(this.spaces(), activeSpaceId) ?? [];
+  });
+
+  readonly activeSpace = computed(() => {
+    const path = this.activeSpacePath();
+    return path[path.length - 1] ?? null;
   });
 
   loadSpaces(preferredPageId?: string | null): void {
@@ -63,7 +68,7 @@ export class KnowledgeBaseStore {
     this.spacesApi
       .getAll()
       .pipe(
-        tap((spaces) => this.applySpaces(spaces, preferredPageId)),
+        tap((spaces) => this.applySpaces(spaces, { preferredPageId })),
         this.catchStoreError('Die Spaces konnten nicht geladen werden.'),
         finalize(() => this.loading.set(false)),
       )
@@ -86,15 +91,20 @@ export class KnowledgeBaseStore {
     this.searchQuery.set(query);
   }
 
-  createSpace(request: CreateSpaceRequest): void {
+  createSpace(request: CreateSpaceRequest, onCreated?: (space: SpaceWithPagesResponse) => void): void {
     this.saving.set(true);
     this.error.set(null);
 
     this.spacesApi
       .create(request)
       .pipe(
-        switchMap(() => this.spacesApi.getAll()),
-        tap((spaces) => this.applySpaces(spaces)),
+        switchMap((created) =>
+          this.spacesApi.getAll().pipe(map((spaces) => ({ created, spaces }))),
+        ),
+        tap(({ created, spaces }) => {
+          this.applySpaces(spaces, { preferredSpaceId: created.id });
+          onCreated?.(findSpace(this.spaces(), created.id) ?? created);
+        }),
         this.catchStoreError('Der Space konnte nicht erstellt werden.'),
         finalize(() => this.saving.set(false)),
       )
@@ -127,7 +137,12 @@ export class KnowledgeBaseStore {
       .update(id, request)
       .pipe(
         switchMap(() => this.spacesApi.getAll()),
-        tap((spaces) => this.applySpaces(spaces, this.activePageId())),
+        tap((spaces) =>
+          this.applySpaces(spaces, {
+            preferredPageId: this.activePageId(),
+            preferredSpaceId: this.activeSpaceId(),
+          }),
+        ),
         this.catchStoreError('Der Space konnte nicht gespeichert werden.'),
         finalize(() => this.saving.set(false)),
       )
@@ -167,7 +182,7 @@ export class KnowledgeBaseStore {
   movePageToSpace(pageId: string, targetSpaceId: string): void {
     const currentSpaces = this.spaces();
     const currentPage = findPage(currentSpaces, pageId);
-    const targetSpace = currentSpaces.find((space) => space.id === targetSpaceId);
+    const targetSpace = findSpace(currentSpaces, targetSpaceId);
 
     if (!currentPage || !targetSpace || currentPage.space.id === targetSpaceId) return;
 
@@ -182,7 +197,7 @@ export class KnowledgeBaseStore {
       })
       .pipe(
         switchMap(() => this.spacesApi.getAll()),
-        tap((spaces) => this.applySpaces(spaces, preferredPageId)),
+        tap((spaces) => this.applySpaces(spaces, { preferredPageId })),
         this.catchStoreError('Die Seite konnte nicht verschoben werden.'),
         finalize(() => this.saving.set(false)),
       )
@@ -198,9 +213,8 @@ export class KnowledgeBaseStore {
       .pipe(
         switchMap(() => this.spacesApi.getAll()),
         tap((spaces) => {
-          this.spaces.set(spaces);
-          const nextPageId = getFirstPageId(spaces);
-          this.activePageId.set(nextPageId);
+          this.applySpaces(spaces);
+          const nextPageId = this.activePageId();
           onDeleted?.(nextPageId);
         }),
         this.catchStoreError('Die Seite konnte nicht gelöscht werden.'),
@@ -216,26 +230,37 @@ export class KnowledgeBaseStore {
   private reloadWithPage(page: PageResponse): Observable<{ page: PageResponse; spaces: SpaceWithPagesResponse[] }> {
     return this.spacesApi.getAll().pipe(
       map((spaces) => ({ page, spaces })),
-      tap(({ spaces }) => this.applySpaces(spaces, page.id)),
+      tap(({ spaces }) => this.applySpaces(spaces, { preferredPageId: page.id })),
     );
   }
 
-  private applySpaces(spaces: SpaceWithPagesResponse[], preferredPageId?: string | null): void {
+  private applySpaces(
+    spaces: SpaceWithPagesResponse[],
+    options: { preferredPageId?: string | null; preferredSpaceId?: string | null } = {},
+  ): void {
     this.spaces.set(spaces);
 
-    if (preferredPageId !== undefined) {
-      this.activePageId.set(preferredPageId);
-      if (preferredPageId) {
+    if (options.preferredPageId !== undefined) {
+      this.activePageId.set(options.preferredPageId);
+      if (options.preferredPageId) {
         this.activeSpaceId.set(null);
       }
       return;
+    }
+
+    if (options.preferredSpaceId !== undefined && options.preferredSpaceId !== null) {
+      if (findSpace(spaces, options.preferredSpaceId)) {
+        this.activeSpaceId.set(options.preferredSpaceId);
+        this.activePageId.set(null);
+        return;
+      }
     }
 
     const currentPageId = this.activePageId();
     if (currentPageId && findPage(spaces, currentPageId)) return;
 
     const currentSpaceId = this.activeSpaceId();
-    if (currentSpaceId && spaces.some((space) => space.id === currentSpaceId)) {
+    if (currentSpaceId && findSpace(spaces, currentSpaceId)) {
       this.activePageId.set(null);
       return;
     }
@@ -263,16 +288,74 @@ function matchesQuery(values: Array<string | null | undefined>, query: string): 
   return values.some((value) => value?.toLowerCase().includes(query));
 }
 
-function findPage(spaces: SpaceWithPagesResponse[], pageId: string) {
+function filterSpaceTree(space: SpaceWithPagesResponse, query: string): SpaceWithPagesResponse | null {
+  const spaceMatches = matchesQuery([space.name, space.description], query);
+  if (spaceMatches) return space;
+
+  const pages = space.pages.filter((page) =>
+    matchesQuery([page.title, page.description, page.content, page.tags.join(' ')], query),
+  );
+  const children = space.children
+    .map((child) => filterSpaceTree(child, query))
+    .filter((child): child is SpaceWithPagesResponse => child !== null);
+
+  if (pages.length === 0 && children.length === 0) return null;
+  return { ...space, pages, children };
+}
+
+function flattenSpaces(
+  spaces: SpaceWithPagesResponse[],
+  depth = 0,
+  ancestors: SpaceWithPagesResponse[] = [],
+): FlattenedSpace[] {
+  return spaces.flatMap((space) => [
+    { space, depth, path: [...ancestors, space] },
+    ...flattenSpaces(space.children, depth + 1, [...ancestors, space]),
+  ]);
+}
+
+function findPage(
+  spaces: SpaceWithPagesResponse[],
+  pageId: string,
+  ancestors: SpaceWithPagesResponse[] = [],
+): { space: SpaceWithPagesResponse; page: PageResponse; path: SpaceWithPagesResponse[] } | null {
   for (const space of spaces) {
     const page = space.pages.find((candidate) => candidate.id === pageId);
-    if (page) return { space, page };
+    const path = [...ancestors, space];
+    if (page) return { space, page, path };
+
+    const childResult = findPage(space.children, pageId, path);
+    if (childResult) return childResult;
+  }
+  return null;
+}
+
+function findSpace(spaces: SpaceWithPagesResponse[], spaceId: string): SpaceWithPagesResponse | null {
+  const path = findSpacePath(spaces, spaceId);
+  return path?.[path.length - 1] ?? null;
+}
+
+function findSpacePath(
+  spaces: SpaceWithPagesResponse[],
+  spaceId: string,
+  ancestors: SpaceWithPagesResponse[] = [],
+): SpaceWithPagesResponse[] | null {
+  for (const space of spaces) {
+    const path = [...ancestors, space];
+    if (space.id === spaceId) return path;
+
+    const childPath = findSpacePath(space.children, spaceId, path);
+    if (childPath) return childPath;
   }
   return null;
 }
 
 function getFirstPageId(spaces: SpaceWithPagesResponse[]): string | null {
-  return spaces.find((space) => space.pages.length > 0)?.pages[0]?.id ?? null;
+  for (const space of spaces) {
+    const pageId = space.pages[0]?.id ?? getFirstPageId(space.children);
+    if (pageId) return pageId;
+  }
+  return null;
 }
 
 function getNextSortOrder(space: SpaceWithPagesResponse): number {

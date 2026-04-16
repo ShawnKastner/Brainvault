@@ -61,6 +61,10 @@ export class ShellComponent {
   protected readonly settingsOpen = signal(false);
   protected readonly deleteDialog = signal<DeleteDialog | null>(null);
 
+  protected readonly activeSidebarSpaceId = computed(() =>
+    this.store.activePageId() ? null : (this.store.activeSpace()?.id ?? null),
+  );
+
   protected readonly deleteDialogTitle = computed(() => {
     const dialog = this.deleteDialog();
     if (!dialog) return '';
@@ -75,14 +79,19 @@ export class ShellComponent {
       return `Die Seite "${dialog.page.title}" wird dauerhaft gelöscht.`;
     }
 
-    const count = dialog.space.pages.length;
-    if (count === 0) {
+    const pageCount = countPagesInSpaceTree(dialog.space);
+    const childCount = countDescendantSpaces(dialog.space);
+    if (pageCount === 0 && childCount === 0) {
       return `Der Space "${dialog.space.name}" wird dauerhaft gelöscht. Er enthält keine Seiten.`;
     }
-    if (count === 1) {
+    if (pageCount === 1 && childCount === 0) {
       return `Der Space "${dialog.space.name}" wird dauerhaft gelöscht. Eine enthaltene Seite wird ebenfalls gelöscht.`;
     }
-    return `Der Space "${dialog.space.name}" wird dauerhaft gelöscht. ${count} enthaltene Seiten werden ebenfalls gelöscht.`;
+    const affected = [
+      pageCount > 0 ? (pageCount === 1 ? 'eine enthaltene Seite' : `${pageCount} enthaltene Seiten`) : null,
+      childCount > 0 ? (childCount === 1 ? 'ein Unterspace' : `${childCount} Unterspaces`) : null,
+    ].filter((value): value is string => value !== null);
+    return `Der Space "${dialog.space.name}" wird dauerhaft gelöscht. ${affected.join(' und ')} werden ebenfalls gelöscht.`;
   });
 
   protected readonly deleteDialogConfirmLabel = computed(() => {
@@ -118,7 +127,7 @@ export class ShellComponent {
     });
 
     effect(() => {
-      const spaceId = this.store.activeSpace()?.id ?? this.store.spaces()[0]?.id;
+      const spaceId = this.store.activeSpace()?.id ?? this.store.flattenedSpaces()[0]?.space.id;
       if (spaceId && this.newPageForm.controls.spaceId.value !== spaceId) {
         this.newPageForm.controls.spaceId.setValue(spaceId, { emitEvent: false });
       }
@@ -131,10 +140,22 @@ export class ShellComponent {
     this.openSpaces.update((spaces) => ({ ...spaces, [spaceId]: !currentValue }));
   }
 
+  protected selectSpace(spaceId: string): void {
+    this.openSpacePath(spaceId);
+    this.editMode.set(false);
+    this.showNewPage.set(false);
+    void this.router.navigate(['/spaces', spaceId]);
+  }
+
   protected selectPage(pageId: string): void {
-    const spaceId = this.store.spaces().find((space) => space.pages.some((page) => page.id === pageId))?.id;
-    if (spaceId) {
-      this.openSpaces.update((spaces) => ({ ...spaces, [spaceId]: true }));
+    const spaceEntry = this.store
+      .flattenedSpaces()
+      .find((entry) => entry.space.pages.some((page) => page.id === pageId));
+    if (spaceEntry) {
+      this.openSpaces.update((spaces) => ({
+        ...spaces,
+        ...Object.fromEntries(spaceEntry.path.map((space) => [space.id, true])),
+      }));
     }
 
     this.editMode.set(false);
@@ -143,16 +164,22 @@ export class ShellComponent {
   }
 
   protected createSpace(request: CreateSpaceRequest): void {
-    this.store.createSpace(request);
+    this.store.createSpace(request, (space) => {
+      this.openSpaces.update((spaces) => ({
+        ...spaces,
+        ...Object.fromEntries(this.store.activeSpacePath().map((entry) => [entry.id, true])),
+      }));
+      void this.router.navigate(['/spaces', space.id]);
+    });
   }
 
   protected requestDeleteSpace(space: SpaceWithPagesResponse): void {
-    const fullSpace = this.store.spaces().find((candidate) => candidate.id === space.id) ?? space;
+    const fullSpace = this.store.allSpaces().find((candidate) => candidate.id === space.id) ?? space;
     this.deleteDialog.set({ kind: 'space', space: fullSpace });
   }
 
   protected movePageToSpace(request: MovePageToSpaceRequest): void {
-    this.openSpaces.update((spaces) => ({ ...spaces, [request.targetSpaceId]: true }));
+    this.openSpacePath(request.targetSpaceId);
     this.store.movePageToSpace(request.pageId, request.targetSpaceId);
   }
 
@@ -234,4 +261,22 @@ export class ShellComponent {
     this.showNewPage.set(false);
     void this.router.navigate(nextPageId ? ['/pages', nextPageId] : ['/']);
   }
+
+  private openSpacePath(spaceId: string): void {
+    const entry = this.store.flattenedSpaces().find((candidate) => candidate.space.id === spaceId);
+    if (!entry) return;
+
+    this.openSpaces.update((spaces) => ({
+      ...spaces,
+      ...Object.fromEntries(entry.path.map((space) => [space.id, true])),
+    }));
+  }
+}
+
+function countPagesInSpaceTree(space: SpaceWithPagesResponse): number {
+  return space.pages.length + space.children.reduce((sum, child) => sum + countPagesInSpaceTree(child), 0);
+}
+
+function countDescendantSpaces(space: SpaceWithPagesResponse): number {
+  return space.children.length + space.children.reduce((sum, child) => sum + countDescendantSpaces(child), 0);
 }

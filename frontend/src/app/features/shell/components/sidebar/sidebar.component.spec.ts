@@ -22,9 +22,11 @@ const space: SpaceWithPagesResponse = {
   description: null,
   color: '#378ADD',
   sortOrder: 0,
+  parentId: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   pages: [],
+  children: [],
 };
 
 const sourceSpace: SpaceWithPagesResponse = {
@@ -38,9 +40,11 @@ const targetSpace: SpaceWithPagesResponse = {
   description: null,
   color: '#BA7517',
   sortOrder: 1,
+  parentId: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   pages: [],
+  children: [],
 };
 
 describe(SidebarComponent.name, () => {
@@ -60,10 +64,18 @@ describe(SidebarComponent.name, () => {
     const emitted: unknown[] = [];
     fixture.componentInstance.createSpace.subscribe((value) => emitted.push(value));
 
+    fixture.componentInstance.startCreateSpace();
     fixture.componentInstance.spaceForm.setValue({ name: ' Notes ', color: '#378ADD' });
     fixture.componentInstance.submitSpace();
 
-    expect(emitted).toEqual([{ name: 'Notes', color: '#378ADD' }]);
+    expect(emitted).toEqual([{ name: 'Notes', color: '#378ADD', parentId: null }]);
+  });
+
+  it('does not render per-space create actions', () => {
+    fixture.componentRef.setInput('spaces', [space]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.nav-section-create')).toBeNull();
   });
 
   it('emits delete requests without toggling the space', () => {
@@ -104,6 +116,24 @@ describe(SidebarComponent.name, () => {
     pageButton().click();
 
     expect(selected).toEqual(['page-1']);
+  });
+
+  it('renders nested spaces and emits space selections', () => {
+    const selected: string[] = [];
+    fixture.componentRef.setInput('spaces', [
+      {
+        ...sourceSpace,
+        children: [{ ...targetSpace, parentId: 'space-1' }],
+      },
+    ]);
+    fixture.componentInstance.selectSpace.subscribe((value) => selected.push(value));
+    fixture.detectChanges();
+
+    const links = fixture.nativeElement.querySelectorAll('.nav-section-link') as NodeListOf<HTMLButtonElement>;
+    links[1].click();
+
+    expect(fixture.nativeElement.textContent).toContain('Archive');
+    expect(selected).toEqual(['space-2']);
   });
 
   it('does not move a page before the long-press delay', fakeAsync(() => {

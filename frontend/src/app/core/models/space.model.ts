@@ -6,12 +6,14 @@ export interface SpaceResponse {
   description: string | null;
   color: string;
   sortOrder: number;
+  parentId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface SpaceWithPagesResponse extends SpaceResponse {
   pages: PageResponse[];
+  children: SpaceWithPagesResponse[];
 }
 
 export interface CreateSpaceRequest {
@@ -19,6 +21,7 @@ export interface CreateSpaceRequest {
   description?: string;
   color?: string;
   sortOrder?: number;
+  parentId?: string | null;
 }
 
 export type UpdateSpaceRequest = Partial<CreateSpaceRequest>;

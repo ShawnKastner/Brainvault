@@ -6,8 +6,10 @@
     [dragDisabled]="editMode()"
     [openSpaces]="openSpaces()"
     [activePageId]="store.activePageId()"
+    [activeSpaceId]="activeSidebarSpaceId()"
     [searchQuery]="store.searchQuery()"
     (toggleSpace)="toggleSpace($event)"
+    (selectSpace)="selectSpace($event)"
     (selectPage)="selectPage($event)"
     (searchQueryChange)="store.setSearchQuery($event)"
     (createSpace)="createSpace($event)"
@@ -18,7 +20,7 @@
 
   <main class="main">
     <bv-topbar
-      [activeSpace]="store.activeSpace()"
+      [activeSpacePath]="store.activeSpacePath()"
       [activePage]="store.activePage()"
       [editMode]="editMode()"
       [saving]="store.saving()"
@@ -41,8 +43,8 @@
         <input class="new-page-input" formControlName="title" placeholder="Titel der neuen Seite..." />
         <select class="new-page-select" formControlName="spaceId">
           <option value="" disabled>Space waehlen...</option>
-          @for (space of store.spaces(); track space.id) {
-            <option [value]="space.id">{{ space.name }}</option>
+          @for (entry of store.flattenedSpaces(); track entry.space.id) {
+            <option [value]="entry.space.id">{{ '-- '.repeat(entry.depth) }}{{ entry.space.name }}</option>
           }
         </select>
         <button type="submit" class="button primary" [disabled]="store.saving() || newPageForm.invalid">
@@ -69,7 +71,9 @@
           [space]="space"
           [saving]="store.saving()"
           (selectPage)="selectPage($event)"
+          (selectSpace)="selectSpace($event)"
           (renameSpace)="renameSpace($event)"
+          (createSubspace)="createSpace($event)"
         />
       } @else if (!store.loading()) {
         <bv-empty-state
