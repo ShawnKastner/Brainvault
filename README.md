@@ -12,6 +12,29 @@ docker compose up --build
 - Backend API: http://localhost:3000/api
 - Swagger:     http://localhost:3000/api/docs
 
+
+## Private Registry via GitHub Pipeline (Docker Pull, nicht oeffentlich)
+
+Die Images koennen jetzt direkt ueber eine GitHub-Actions-Pipeline privat nach GHCR gebaut und gepusht werden.
+
+- Workflow: `.github/workflows/docker-private-registry.yml`
+- Compose fuer Pull aus Registry: `docker-compose.registry.yml`
+- Env-Beispiel: `.env.registry.example`
+- Detaillierte Schritte (Deutsch): `docs/private-registry-deployment.md`
+
+Kurzablauf:
+
+```bash
+# 1) Pipeline in GitHub Actions laufen lassen (build + push nach ghcr.io/<owner>/...)
+cp .env.registry.example .env.registry
+# 2) PRIVATE_REGISTRY und APP_IMAGE_TAG setzen
+# 3) Images ziehen und starten
+docker compose --env-file .env.registry -f docker-compose.registry.yml pull
+docker compose --env-file .env.registry -f docker-compose.registry.yml up -d
+```
+
+Wichtig: Repository/Packages auf **private** lassen, damit nur freigegebene Accounts pullen koennen.
+
 ## Lokale Entwicklung
 
 ### Voraussetzungen
