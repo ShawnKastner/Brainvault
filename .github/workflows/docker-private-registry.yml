@@ -59,13 +59,14 @@ jobs:
         run: |
           set -euo pipefail
           SHORT_SHA="${DEFAULT_SHA::7}"
+          OWNER_LOWER="$(echo "${OWNER}" | tr '[:upper:]' '[:lower:]')"
 
           TAG="${INPUT_TAG:-}" 
           if [ -z "${TAG}" ]; then
             TAG="sha-${SHORT_SHA}"
           fi
 
-          IMAGE="ghcr.io/${OWNER}/${IMAGE_NAME}"
+          IMAGE="ghcr.io/${OWNER_LOWER}/${IMAGE_NAME}"
           TAGS="${IMAGE}:${TAG}"
 
           if [ "${PUBLISH_LATEST}" = "true" ]; then
