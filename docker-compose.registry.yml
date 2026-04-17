@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: brainvault
+      POSTGRES_USER: brainvault
+      POSTGRES_PASSWORD: brainvault_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brainvault"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ${PRIVATE_REGISTRY}/brainvault-backend:${APP_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3001}:3000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: brainvault
+      DB_USER: brainvault
+      DB_PASS: brainvault_secret
+      DB_MIGRATIONS_RUN: "true"
+      PORT: 3000
+      NODE_ENV: production
+      CORS_ORIGINS: http://localhost:4200,http://localhost
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: ${PRIVATE_REGISTRY}/brainvault-frontend:${APP_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
