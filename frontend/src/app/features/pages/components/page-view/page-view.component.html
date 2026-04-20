@@ -27,7 +27,12 @@
   }
 
   @if (page().content) {
-    <div class="page-body" [innerHTML]="page() | pageContent" [bvRenderMermaid]="mermaidRenderTrigger()"></div>
+    <div
+      class="page-body"
+      [innerHTML]="page() | pageContent"
+      [bvRenderMermaid]="mermaidRenderTrigger()"
+      (click)="openContentLink($event)"
+    ></div>
   } @else {
     <div class="page-empty">
       Noch kein Inhalt. Klicke auf <strong>Bearbeiten</strong>, um loszulegen.

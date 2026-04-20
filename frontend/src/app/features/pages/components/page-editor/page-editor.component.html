@@ -102,3 +102,114 @@
     </button>
   </div>
 </form>
+
+@if (linkModalOpen()) {
+  <div class="link-modal">
+    <button type="button" class="link-modal-backdrop" aria-label="Dialog schliessen" (click)="closeLinkModal()"></button>
+
+    <form
+      class="link-modal-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="link-modal-title"
+      (submit)="applyLink(); $event.preventDefault()"
+    >
+      <header class="link-modal-header">
+        <div>
+          <p class="link-modal-eyebrow">Verknüpfung</p>
+          <h2 id="link-modal-title">Link einfügen</h2>
+        </div>
+        <button type="button" class="link-icon-button" aria-label="Dialog schliessen" (click)="closeLinkModal()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="link-mode-switch" role="tablist" aria-label="Linktyp">
+        <button
+          type="button"
+          class="link-mode-button"
+          role="tab"
+          [class.active]="linkMode() === 'url'"
+          [attr.aria-selected]="linkMode() === 'url'"
+          (click)="selectLinkMode('url')"
+        >
+          URL
+        </button>
+        <button
+          type="button"
+          class="link-mode-button"
+          role="tab"
+          [class.active]="linkMode() === 'document'"
+          [attr.aria-selected]="linkMode() === 'document'"
+          (click)="selectLinkMode('document')"
+        >
+          Dokument
+        </button>
+      </div>
+
+      @if (linkMode() === 'url') {
+        <label class="link-field">
+          <span>URL</span>
+          <input
+            class="link-input"
+            type="text"
+            inputmode="url"
+            [value]="linkUrl()"
+            placeholder="https://example.com"
+            (input)="updateLinkUrl($any($event.target).value)"
+          />
+        </label>
+      } @else {
+        <div class="link-field">
+          <label for="document-link-search">Dokument suchen</label>
+          <input
+            id="document-link-search"
+            class="link-input"
+            type="search"
+            [value]="linkSearchQuery()"
+            placeholder="Titel, Beschreibung oder Space..."
+            (input)="updateLinkSearch($any($event.target).value)"
+          />
+        </div>
+
+        <div class="document-link-list" role="listbox" aria-label="Dokumente">
+          @for (document of filteredLinkableDocuments(); track document.id) {
+            <button
+              type="button"
+              class="document-link-option"
+              role="option"
+              [class.active]="selectedDocumentId() === document.id"
+              [attr.aria-selected]="selectedDocumentId() === document.id"
+              (click)="selectDocument(document)"
+            >
+              <span class="document-link-title">{{ document.title }}</span>
+              <span class="document-link-space">{{ document.spacePath }}</span>
+              @if (document.description) {
+                <span class="document-link-description">{{ document.description }}</span>
+              }
+            </button>
+          } @empty {
+            <div class="document-link-empty">
+              Keine Dokumente gefunden.
+            </div>
+          }
+        </div>
+      }
+
+      @if (linkError(); as error) {
+        <p class="link-error" role="alert">{{ error }}</p>
+      }
+
+      <footer class="link-modal-actions">
+        @if (currentLinkHref()) {
+          <button type="button" class="button danger" (click)="removeLink()">Entfernen</button>
+        }
+        <span class="link-modal-action-spacer"></span>
+        <button type="button" class="button" (click)="closeLinkModal()">Abbrechen</button>
+        <button type="submit" class="button primary">{{ linkSubmitLabel() }}</button>
+      </footer>
+    </form>
+  </div>
+}

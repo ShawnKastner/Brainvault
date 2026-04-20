@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Router } from '@angular/router';
 import type { PageResponse } from '../../../../core/models/page.model';
 import { API_URL } from '../../../../core/config/api-url.token';
 import { SETTINGS_STORAGE_KEY, SettingsService } from '../../../../core/services/settings.service';
@@ -27,6 +28,7 @@ describe(PageViewComponent.name, () => {
   let fixture: ComponentFixture<PageViewComponent>;
   let settings: SettingsService;
   let http: HttpTestingController;
+  let router: jasmine.SpyObj<Router>;
   let initializeSpy: jasmine.Spy<MermaidRendererApi['initialize']>;
   let renderSpy: jasmine.Spy<MermaidRendererApi['render']>;
 
@@ -39,6 +41,7 @@ describe(PageViewComponent.name, () => {
     renderSpy = jasmine.createSpy('render').and.callFake(async (id: string, definition: string) => ({
       svg: `<svg id="${id}"><text>${definition}</text></svg>`,
     }));
+    router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
 
     await TestBed.configureTestingModule({
       imports: [PageViewComponent],
@@ -46,6 +49,7 @@ describe(PageViewComponent.name, () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: API_URL, useValue: '/api' },
+        { provide: Router, useValue: router },
         {
           provide: MERMAID_LOADER,
           useValue: async () => ({
@@ -138,10 +142,60 @@ describe(PageViewComponent.name, () => {
     expect(host.textContent).not.toContain('3 Wörter');
     expect(host.textContent).not.toContain('ca. 1 Min. Lesezeit');
   });
+
+  it('navigates internal page links through the router', () => {
+    fixture.componentRef.setInput('page', {
+      ...page,
+      content: '<p><a href="/pages/page-2">Roadmap</a></p>',
+      contentFormat: 'html',
+    });
+    fixture.detectChanges();
+
+    const event = runLinkClick(fixture);
+
+    expect(event.defaultPrevented).toBeTrue();
+    expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/pages/page-2');
+  });
+
+  it('does not intercept external links', () => {
+    fixture.componentRef.setInput('page', {
+      ...page,
+      content: '<p><a href="https://example.com/">Extern</a></p>',
+      contentFormat: 'html',
+    });
+    fixture.detectChanges();
+
+    const event = runLinkClick(fixture);
+
+    expect(event.defaultPrevented).toBeFalse();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
 });
 
 async function flushRenderer(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function runLinkClick(fixture: ComponentFixture<PageViewComponent>): MouseEvent {
+  const body = fixture.nativeElement.querySelector('.page-body') as HTMLElement;
+  const anchor = fixture.nativeElement.querySelector('.page-body a') as HTMLAnchorElement;
+  const event = {
+    altKey: false,
+    button: 0,
+    ctrlKey: false,
+    currentTarget: body,
+    defaultPrevented: false,
+    metaKey: false,
+    preventDefault: jasmine.createSpy('preventDefault').and.callFake(() => {
+      (event as { defaultPrevented: boolean }).defaultPrevented = true;
+    }),
+    shiftKey: false,
+    target: anchor,
+  } as unknown as MouseEvent;
+
+  fixture.componentInstance.openContentLink(event);
+  fixture.detectChanges();
+  return event;
 }

@@ -1,10 +1,20 @@
-import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ViewEncapsulation,
+  computed,
+  inject,
+  input,
+} from '@angular/core';
+import { Router } from '@angular/router';
 import type { PageResponse } from '../../../../core/models/page.model';
 import type { SpaceResponse } from '../../../../core/models/space.model';
 import { SettingsService } from '../../../../core/services/settings.service';
 import { MermaidRendererDirective } from '../../../../shared/directives/mermaid-renderer.directive';
 import { PageContentPipe } from '../../../../shared/pipes/page-content.pipe';
 import { calculateReadingStats } from '../../../../shared/utils/reading-stats';
+
+const INTERNAL_PAGE_LINK_PATTERN = /^\/pages\/[^/?#]+$/;
 
 @Component({
   selector: 'bv-page-view',
@@ -16,6 +26,7 @@ import { calculateReadingStats } from '../../../../shared/utils/reading-stats';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PageViewComponent {
+  private readonly router = inject(Router);
   private readonly settingsService = inject(SettingsService);
 
   readonly page = input.required<PageResponse>();
@@ -51,5 +62,29 @@ export class PageViewComponent {
       month: '2-digit',
       year: 'numeric',
     });
+  }
+
+  openContentLink(event: MouseEvent): void {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const anchor = target?.closest<HTMLAnchorElement>('a[href]');
+    const host = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    if (!anchor || !host?.contains(anchor)) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href || !INTERNAL_PAGE_LINK_PATTERN.test(href)) return;
+
+    event.preventDefault();
+    void this.router.navigateByUrl(href);
   }
 }

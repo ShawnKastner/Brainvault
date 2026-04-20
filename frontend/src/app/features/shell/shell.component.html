@@ -59,6 +59,7 @@
         @if (editMode()) {
           <bv-page-editor
             [page]="page"
+            [linkableSpaces]="store.spaces()"
             [saving]="store.saving()"
             (save)="savePage($event)"
             (cancel)="editMode.set(false)"
