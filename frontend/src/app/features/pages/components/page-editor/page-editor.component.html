@@ -80,11 +80,29 @@
       </button>
     </div>
 
+    <div class="toolbar-group" aria-label="Medien">
+      <button type="button" class="tool-button" [disabled]="imageUploading()" (click)="openImagePicker()">
+        {{ imageUploading() ? 'Bild laedt...' : 'Bild' }}
+      </button>
+    </div>
+
     <div class="toolbar-group" aria-label="Verlauf">
       <button type="button" class="tool-button" [disabled]="!canUndo()" (click)="undo()">Rueckgaengig</button>
       <button type="button" class="tool-button" [disabled]="!canRedo()" (click)="redo()">Wiederholen</button>
     </div>
   </div>
+
+  <input
+    #imageInput
+    class="image-file-input"
+    type="file"
+    accept="image/png,image/jpeg,image/webp,image/gif"
+    (change)="insertSelectedImage($event)"
+  />
+
+  @if (imageError(); as error) {
+    <p class="field-error" role="alert">{{ error }}</p>
+  }
 
   <div #editorHost id="page-content" class="editor-surface"></div>
 

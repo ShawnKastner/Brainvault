@@ -1,4 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
+import { of, throwError } from 'rxjs';
+import { ImagesApiService } from '../../../../core/api/images-api.service';
 import type { PageResponse, UpdatePageRequest } from '../../../../core/models/page.model';
 import type { SpaceWithPagesResponse } from '../../../../core/models/space.model';
 import { PageEditorComponent } from './page-editor.component';
@@ -53,9 +55,24 @@ const linkableSpaces: SpaceWithPagesResponse[] = [
 ];
 
 describe(PageEditorComponent.name, () => {
+  let imagesApi: jasmine.SpyObj<ImagesApiService>;
+
   beforeEach(async () => {
+    imagesApi = jasmine.createSpyObj<ImagesApiService>('ImagesApiService', ['uploadImage']);
+    imagesApi.uploadImage.and.returnValue(
+      of({
+        id: 'asset-1',
+        url: '/api/assets/images/11111111-1111-4111-8111-111111111111.png',
+        filename: '11111111-1111-4111-8111-111111111111.png',
+        originalName: 'image.png',
+        contentType: 'image/png',
+        size: 5,
+      }),
+    );
+
     await TestBed.configureTestingModule({
       imports: [PageEditorComponent],
+      providers: [{ provide: ImagesApiService, useValue: imagesApi }],
     }).compileComponents();
   });
 
@@ -199,6 +216,106 @@ describe(PageEditorComponent.name, () => {
     expect(html).toContain('Docs');
     expect(html).not.toContain('<a');
   });
+
+  it('uploads and inserts selected image files', () => {
+    const { fixture } = setup(basePage);
+    const component = fixture.componentInstance;
+    const file = new File(['image'], 'diagram.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [file] });
+
+    component.insertSelectedImage({ target: input } as unknown as Event);
+    fixture.detectChanges();
+
+    const html = component.editor?.getHTML() ?? '';
+
+    expect(imagesApi.uploadImage).toHaveBeenCalledWith(file);
+    expect(html).toContain('<img');
+    expect(html).toContain('src="/api/assets/images/11111111-1111-4111-8111-111111111111.png"');
+    expect(html).toContain('alt="image.png"');
+  });
+
+  it('shows an image upload error when upload fails', () => {
+    imagesApi.uploadImage.and.returnValue(throwError(() => new Error('upload failed')));
+    const { fixture } = setup(basePage);
+    const file = new File(['image'], 'diagram.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [file] });
+
+    fixture.componentInstance.insertSelectedImage({ target: input } as unknown as Event);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Das Bild konnte nicht hochgeladen werden.');
+  });
+
+  it('uploads pasted image files and inserts them into the editor', fakeAsync(() => {
+    const { fixture } = setup(basePage);
+    const component = fixture.componentInstance;
+    const file = new File(['image'], 'notes-image.png', { type: 'image/png' });
+    const event = createPasteEvent({
+      files: [file],
+    });
+
+    const handled = triggerPaste(component, event);
+    flushMicrotasks();
+    fixture.detectChanges();
+
+    const html = component.editor?.getHTML() ?? '';
+
+    expect(handled).toBeTrue();
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(imagesApi.uploadImage).toHaveBeenCalledWith(file);
+    expect(html).toContain('src="/api/assets/images/11111111-1111-4111-8111-111111111111.png"');
+    expect(html).toContain('alt="image.png"');
+  }));
+
+  it('uploads Apple Notes style pasted HTML images from clipboard files', fakeAsync(() => {
+    const { fixture } = setup(basePage);
+    const component = fixture.componentInstance;
+    const file = new File(['image'], 'apple-note.png', { type: 'image/png' });
+    const event = createPasteEvent({
+      html: '<p>Aus Apple Notes</p><img src="webkit-fake-url://A1B2C3/image.png" alt="Skizze">',
+      text: 'Aus Apple Notes',
+      files: [file],
+    });
+
+    const handled = triggerPaste(component, event);
+    flushMicrotasks();
+    fixture.detectChanges();
+
+    const html = component.editor?.getHTML() ?? '';
+
+    expect(handled).toBeTrue();
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(imagesApi.uploadImage).toHaveBeenCalledWith(file);
+    expect(html).toContain('<p>Aus Apple Notes</p>');
+    expect(html).toContain('src="/api/assets/images/11111111-1111-4111-8111-111111111111.png"');
+    expect(html).toContain('alt="Skizze"');
+  }));
+
+  it('uploads pasted data URL images before inserting HTML', fakeAsync(() => {
+    const { fixture } = setup(basePage);
+    const component = fixture.componentInstance;
+    const dataUrl = `data:image/png;base64,${btoa('image')}`;
+    const event = createPasteEvent({
+      html: `<p>Mit eingebettetem Bild</p><img src="${dataUrl}">`,
+    });
+
+    const handled = triggerPaste(component, event);
+    flushMicrotasks();
+    fixture.detectChanges();
+
+    const uploadedFile = imagesApi.uploadImage.calls.mostRecent().args[0];
+    const html = component.editor?.getHTML() ?? '';
+
+    expect(handled).toBeTrue();
+    expect(uploadedFile.name).toBe('pasted-image-1.png');
+    expect(uploadedFile.type).toBe('image/png');
+    expect(html).toContain('<p>Mit eingebettetem Bild</p>');
+    expect(html).toContain('src="/api/assets/images/11111111-1111-4111-8111-111111111111.png"');
+    expect(html).not.toContain('data:image');
+  }));
+
 });
 
 function setup(page: PageResponse, spaces: SpaceWithPagesResponse[] = []): {
@@ -253,4 +370,40 @@ function submitLinkModal(fixture: ComponentFixture<PageEditorComponent>): void {
   const form = fixture.nativeElement.querySelector('.link-modal-panel') as HTMLFormElement;
   form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   fixture.detectChanges();
+}
+
+function createPasteEvent(input: {
+  html?: string;
+  text?: string;
+  files?: File[];
+}): ClipboardEvent & { preventDefault: jasmine.Spy } {
+  const files = input.files ?? [];
+  const clipboard = {
+    files,
+    items: files.map((file) => ({
+      kind: 'file',
+      type: file.type,
+      getAsFile: () => file,
+    })),
+    getData: (type: string) => {
+      if (type === 'text/html') return input.html ?? '';
+      if (type === 'text/plain') return input.text ?? '';
+      return '';
+    },
+  };
+
+  return {
+    clipboardData: clipboard,
+    preventDefault: jasmine.createSpy('preventDefault'),
+  } as unknown as ClipboardEvent & { preventDefault: jasmine.Spy };
+}
+
+function triggerPaste(component: PageEditorComponent, event: ClipboardEvent): boolean {
+  const view = component.editor?.view;
+  let handled = false;
+  view?.someProp('handlePaste', (handler) => {
+    handled = handler(view, event, null as never) === true;
+    return true;
+  });
+  return handled;
 }

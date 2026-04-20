@@ -1,8 +1,8 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import type { PageResponse } from '../../core/models/page.model';
+import { sanitizePageHtml } from '../utils/page-html-sanitizer';
 
 @Pipe({
   name: 'pageContent',
@@ -19,6 +19,6 @@ export class PageContentPipe implements PipeTransform {
         ? marked.parse(page.content, { async: false })
         : page.content;
 
-    return this.sanitizer.bypassSecurityTrustHtml(DOMPurify.sanitize(html));
+    return this.sanitizer.bypassSecurityTrustHtml(sanitizePageHtml(html));
   }
 }

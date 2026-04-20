@@ -149,6 +149,15 @@
   text-underline-offset: 0.16rem;
 }
 
+.page-body img {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: block;
+  height: auto;
+  margin: 1rem 0;
+  max-width: 100%;
+}
+
 .page-body ul,
 .page-body ol {
   margin: 0 0 0.75rem;

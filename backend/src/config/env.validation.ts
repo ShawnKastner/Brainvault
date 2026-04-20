@@ -2,6 +2,7 @@ type Environment = 'development' | 'production' | 'test';
 
 const trueValues = ['true', '1', 'yes'];
 const falseValues = ['false', '0', 'no'];
+const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 function readString(config: Record<string, unknown>, key: string, fallback: string): string {
   const value = config[key];
@@ -10,6 +11,16 @@ function readString(config: Record<string, unknown>, key: string, fallback: stri
 
 function readNumber(config: Record<string, unknown>, key: string, fallback: number): number {
   const value = config[key];
+  const parsed = typeof value === 'number' ? value : Number(value ?? fallback);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${key} must be a positive integer`);
+  }
+
+  return parsed;
+}
+
+function readPositiveIntegerValue(value: unknown, key: string, fallback: number): number {
   const parsed = typeof value === 'number' ? value : Number(value ?? fallback);
 
   if (!Number.isInteger(parsed) || parsed <= 0) {
@@ -49,6 +60,10 @@ export function resolveDbMigrationsRun(value?: unknown): boolean {
   throw new Error('DB_MIGRATIONS_RUN must be a boolean value');
 }
 
+export function readMaxImageUploadBytes(value?: unknown): number {
+  return readPositiveIntegerValue(value, 'MAX_IMAGE_UPLOAD_BYTES', DEFAULT_MAX_IMAGE_UPLOAD_BYTES);
+}
+
 export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {
   const nodeEnv = readEnvironment(config);
 
@@ -62,6 +77,8 @@ export function validateEnvironment(config: Record<string, unknown>): Record<str
     DB_USER: readString(config, 'DB_USER', 'brainvault'),
     DB_PASS: readString(config, 'DB_PASS', 'brainvault_secret'),
     DB_MIGRATIONS_RUN: resolveDbMigrationsRun(config['DB_MIGRATIONS_RUN']),
+    UPLOAD_DIR: readString(config, 'UPLOAD_DIR', 'uploads'),
+    MAX_IMAGE_UPLOAD_BYTES: readMaxImageUploadBytes(config['MAX_IMAGE_UPLOAD_BYTES']),
     CORS_ORIGINS: readString(
       config,
       'CORS_ORIGINS',

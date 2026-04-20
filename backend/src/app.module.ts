@@ -4,6 +4,7 @@ import { appConfig } from './config/app.config';
 import { databaseConfig } from './database/database.config';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { AssetsModule } from './assets/assets.module';
 import { SpacesModule } from './spaces/spaces.module';
 import { PagesModule } from './pages/pages.module';
 import { SettingsModule } from './settings/settings.module';
@@ -18,6 +19,7 @@ import { validateEnvironment } from './config/env.validation';
     }),
     DatabaseModule,
     HealthModule,
+    AssetsModule,
     SpacesModule,
     PagesModule,
     SettingsModule,

@@ -32,7 +32,11 @@ services:
       DB_MIGRATIONS_RUN: "true"
       PORT: 3000
       NODE_ENV: development
+      UPLOAD_DIR: /app/uploads
+      MAX_IMAGE_UPLOAD_BYTES: 5242880
       CORS_ORIGINS: http://localhost:4200,http://localhost
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -49,3 +53,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

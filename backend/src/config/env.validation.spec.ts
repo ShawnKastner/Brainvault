@@ -1,4 +1,4 @@
-import { resolveDbMigrationsRun, validateEnvironment } from './env.validation';
+import { readMaxImageUploadBytes, resolveDbMigrationsRun, validateEnvironment } from './env.validation';
 
 describe('environment validation', () => {
   it('enables database migrations by default', () => {
@@ -21,6 +21,16 @@ describe('environment validation', () => {
   it('rejects invalid database migrations values', () => {
     expect(() => resolveDbMigrationsRun('sometimes')).toThrow(
       'DB_MIGRATIONS_RUN must be a boolean value',
+    );
+  });
+
+  it('defaults and validates the maximum image upload size', () => {
+    expect(readMaxImageUploadBytes()).toBe(5 * 1024 * 1024);
+    expect(readMaxImageUploadBytes('1024')).toBe(1024);
+    expect(validateEnvironment({})['UPLOAD_DIR']).toBe('uploads');
+    expect(validateEnvironment({})['MAX_IMAGE_UPLOAD_BYTES']).toBe(5 * 1024 * 1024);
+    expect(() => readMaxImageUploadBytes('0')).toThrow(
+      'MAX_IMAGE_UPLOAD_BYTES must be a positive integer',
     );
   });
 });

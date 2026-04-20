@@ -120,6 +120,22 @@ describe(PageViewComponent.name, () => {
     expect(host.querySelector('.page-body .mermaid-diagram svg')).not.toBeNull();
   });
 
+  it('renders uploaded images and removes unsafe image sources', () => {
+    fixture.componentRef.setInput('page', {
+      ...page,
+      content:
+        '<p><img src="/api/assets/images/11111111-1111-4111-8111-111111111111.png" alt="Diagramm"></p><p><img src="data:image/png;base64,abc"></p>',
+      contentFormat: 'html',
+    });
+    fixture.detectChanges();
+
+    const images = fixture.nativeElement.querySelectorAll('.page-body img') as NodeListOf<HTMLImageElement>;
+
+    expect(images.length).toBe(1);
+    expect(images[0].getAttribute('src')).toBe('/api/assets/images/11111111-1111-4111-8111-111111111111.png');
+    expect(images[0].getAttribute('loading')).toBe('lazy');
+  });
+
   it('renders word count and reading time in the meta row', () => {
     const text = fixture.nativeElement.textContent;
 
