@@ -260,7 +260,7 @@
 .page-editor .editor-document table {
   border-collapse: collapse;
   font-size: 0.88rem;
-  min-width: 100%;
+  min-width: 100% !important;
   table-layout: fixed;
   width: max-content;
 }

@@ -3,6 +3,7 @@ type Environment = 'development' | 'production' | 'test';
 const trueValues = ['true', '1', 'yes'];
 const falseValues = ['false', '0', 'no'];
 const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
+const DEFAULT_MAX_PDF_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 function readString(config: Record<string, unknown>, key: string, fallback: string): string {
   const value = config[key];
@@ -64,6 +65,10 @@ export function readMaxImageUploadBytes(value?: unknown): number {
   return readPositiveIntegerValue(value, 'MAX_IMAGE_UPLOAD_BYTES', DEFAULT_MAX_IMAGE_UPLOAD_BYTES);
 }
 
+export function readMaxPdfUploadBytes(value?: unknown): number {
+  return readPositiveIntegerValue(value, 'MAX_PDF_UPLOAD_BYTES', DEFAULT_MAX_PDF_UPLOAD_BYTES);
+}
+
 export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {
   const nodeEnv = readEnvironment(config);
 
@@ -79,6 +84,7 @@ export function validateEnvironment(config: Record<string, unknown>): Record<str
     DB_MIGRATIONS_RUN: resolveDbMigrationsRun(config['DB_MIGRATIONS_RUN']),
     UPLOAD_DIR: readString(config, 'UPLOAD_DIR', 'uploads'),
     MAX_IMAGE_UPLOAD_BYTES: readMaxImageUploadBytes(config['MAX_IMAGE_UPLOAD_BYTES']),
+    MAX_PDF_UPLOAD_BYTES: readMaxPdfUploadBytes(config['MAX_PDF_UPLOAD_BYTES']),
     CORS_ORIGINS: readString(
       config,
       'CORS_ORIGINS',

@@ -53,10 +53,12 @@ export class SidebarComponent implements OnDestroy {
   readonly openSpaces = input<Partial<Record<string, boolean>>>({});
   readonly activePageId = input<string | null>(null);
   readonly activeSpaceId = input<string | null>(null);
+  readonly storageActive = input(false);
   readonly searchQuery = input('');
 
   readonly selectPage = output<string>();
   readonly selectSpace = output<string>();
+  readonly selectStorage = output<void>();
   readonly toggleSpace = output<string>();
   readonly searchQueryChange = output<string>();
   readonly createSpace = output<CreateSpaceRequest>();

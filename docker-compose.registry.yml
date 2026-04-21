@@ -33,6 +33,7 @@ services:
       NODE_ENV: production
       UPLOAD_DIR: /app/uploads
       MAX_IMAGE_UPLOAD_BYTES: 5242880
+      MAX_PDF_UPLOAD_BYTES: 26214400
       CORS_ORIGINS: http://localhost:4200,http://localhost
     volumes:
       - uploads:/app/uploads

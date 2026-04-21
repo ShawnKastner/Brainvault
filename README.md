@@ -116,10 +116,15 @@ brainvault/
 - `POST /api/pages`
 - `PUT /api/pages/:id` und `PATCH /api/pages/:id`
 - `DELETE /api/pages/:id`
+- `GET /api/assets/pdfs`
+- `POST /api/assets/pdfs`
+- `GET /api/assets/pdfs/:id`
+- `DELETE /api/assets/pdfs/:id`
 
 ## Konfiguration
 
 `DB_MIGRATIONS_RUN` steuert, ob offene TypeORM-Migrationen beim Backend-Start automatisch laufen. Der Default ist `true`.
+`MAX_IMAGE_UPLOAD_BYTES` begrenzt Bild-Uploads, `MAX_PDF_UPLOAD_BYTES` begrenzt PDF-Uploads fuer den Storage.
 
 Das Frontend nutzt relativ `/api`; lokal leitet `proxy.conf.json` auf `http://localhost:3000` weiter, im Docker-Setup uebernimmt nginx den Proxy zum Backend.
 

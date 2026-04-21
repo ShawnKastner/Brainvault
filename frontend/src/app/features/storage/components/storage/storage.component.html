@@ -1,0 +1,119 @@
+<section class="storage-view">
+  <aside class="storage-panel" aria-label="PDF Storage">
+    <header class="storage-header">
+      <div>
+        <p class="storage-eyebrow">{{ storageSummary() }}</p>
+        <h1>Storage</h1>
+      </div>
+
+      <label class="upload-button" [class.disabled]="uploading()">
+        <input
+          type="file"
+          accept="application/pdf"
+          [disabled]="uploading()"
+          (change)="uploadSelectedPdf($event)"
+        />
+        <span>{{ uploading() ? 'Laedt...' : 'PDF hochladen' }}</span>
+      </label>
+    </header>
+
+    <label class="storage-search" aria-label="PDFs suchen">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="6.5" cy="6.5" r="4.5" />
+        <path d="M10.5 10.5L14 14" />
+      </svg>
+      <input
+        type="search"
+        placeholder="PDF suchen..."
+        [value]="searchQuery()"
+        (input)="updateSearch($any($event.target).value)"
+      />
+    </label>
+
+    @if (error(); as message) {
+      <div class="storage-alert" role="alert">
+        <span>{{ message }}</span>
+        <button type="button" aria-label="Meldung schliessen" (click)="dismissError()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
+      </div>
+    }
+
+    <div class="pdf-list" aria-label="PDF-Dateien">
+      @if (loading()) {
+        <div class="storage-empty">Laedt...</div>
+      } @else {
+        @for (pdf of filteredPdfs(); track pdf.id) {
+          <div class="pdf-row" [class.active]="selectedPdfId() === pdf.id">
+            <button type="button" class="pdf-select" (click)="selectPdf(pdf)">
+              <span class="pdf-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="2" y="1" width="12" height="14" rx="2" />
+                  <path d="M5 5h6M5 8h6M5 11h3" />
+                </svg>
+              </span>
+              <span class="pdf-copy">
+                <span class="pdf-title">{{ pdf.originalName }}</span>
+                <span class="pdf-meta">
+                  {{ formatFileSize(pdf.size) }} · {{ pdf.createdAt | date: 'dd.MM.yyyy' }}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="pdf-delete"
+              [disabled]="deleting()"
+              [attr.aria-label]="pdf.originalName + ' löschen'"
+              (click)="requestDelete(pdf, $event)"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M6.4 2.4h3.2l.6 1.2H14M2 3.6h12M4 5.8l.5 7.2h7l.5-7.2" />
+                <path d="M6.5 7.2v3.9M9.5 7.2v3.9" />
+              </svg>
+            </button>
+          </div>
+        } @empty {
+          <div class="storage-empty">Keine PDFs gefunden.</div>
+        }
+      }
+    </div>
+  </aside>
+
+  <main class="storage-preview">
+    @if (selectedPdf(); as pdf) {
+      <header class="preview-header">
+        <div>
+          <p>{{ formatFileSize(pdf.size) }}</p>
+          <h2>{{ pdf.originalName }}</h2>
+        </div>
+      </header>
+
+      @if (selectedPdfUrl(); as url) {
+        <iframe class="pdf-frame" [src]="url" [title]="pdf.originalName"></iframe>
+      }
+    } @else {
+      <div class="preview-empty">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+          <rect x="8" y="4" width="32" height="40" rx="3" />
+          <path d="M16 16h16M16 22h16M16 28h10" />
+        </svg>
+        <p>Keine PDF ausgewählt</p>
+      </div>
+    }
+  </main>
+
+  <bv-confirm-modal
+    [open]="deleteCandidate() !== null"
+    [title]="'PDF löschen?'"
+    [message]="deleteCandidate()?.originalName ?? ''"
+    [confirmLabel]="'PDF löschen'"
+    [cancelLabel]="'Abbrechen'"
+    [pendingLabel]="'Löscht...'"
+    [pending]="deleting()"
+    [danger]="true"
+    (cancel)="cancelDelete()"
+    (confirm)="confirmDelete()"
+  />
+</section>

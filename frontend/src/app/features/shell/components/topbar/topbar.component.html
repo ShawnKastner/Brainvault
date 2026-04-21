@@ -1,32 +1,39 @@
 <header class="topbar">
   <nav class="breadcrumb" aria-label="Breadcrumb">
     <span>BrainVault</span>
-    @for (space of activeSpacePath(); track space.id; let last = $last) {
+    @if (storageActive()) {
       <span class="sep">/</span>
-      @if (activePage() || !last) {
-        <a class="breadcrumb-link" [routerLink]="['/spaces', space.id]">{{ space.name }}</a>
-      } @else {
-        <span class="current">{{ space.name }}</span>
+      <span class="current">Storage</span>
+    } @else {
+      @for (space of activeSpacePath(); track space.id; let last = $last) {
+        <span class="sep">/</span>
+        @if (activePage() || !last) {
+          <a class="breadcrumb-link" [routerLink]="['/spaces', space.id]">{{ space.name }}</a>
+        } @else {
+          <span class="current">{{ space.name }}</span>
+        }
       }
-    }
-    @if (activePage(); as page) {
-      <span class="sep">/</span>
-      <span class="current">{{ page.title }}</span>
+      @if (activePage(); as page) {
+        <span class="sep">/</span>
+        <span class="current">{{ page.title }}</span>
+      }
     }
   </nav>
 
   <div class="topbar-actions">
-    @if (!editMode()) {
-      <button type="button" class="button" (click)="showCreatePage.emit()">+ Neue Seite</button>
-      @if (activePage()) {
-        <button type="button" class="button" (click)="startEdit.emit()">Bearbeiten</button>
-        <button type="button" class="button danger" (click)="deletePage.emit()">Löschen</button>
+    @if (!storageActive()) {
+      @if (!editMode()) {
+        <button type="button" class="button" (click)="showCreatePage.emit()">+ Neue Seite</button>
+        @if (activePage()) {
+          <button type="button" class="button" (click)="startEdit.emit()">Bearbeiten</button>
+          <button type="button" class="button danger" (click)="deletePage.emit()">Löschen</button>
+        }
+      } @else {
+        <button type="button" class="button" (click)="cancelEdit.emit()">Abbrechen</button>
+        <button type="button" class="button primary" [disabled]="saving()" (click)="savePage.emit()">
+          {{ saving() ? 'Speichert...' : 'Speichern' }}
+        </button>
       }
-    } @else {
-      <button type="button" class="button" (click)="cancelEdit.emit()">Abbrechen</button>
-      <button type="button" class="button primary" [disabled]="saving()" (click)="savePage.emit()">
-        {{ saving() ? 'Speichert...' : 'Speichern' }}
-      </button>
     }
   </div>
 </header>

@@ -1,4 +1,9 @@
-import { readMaxImageUploadBytes, resolveDbMigrationsRun, validateEnvironment } from './env.validation';
+import {
+  readMaxImageUploadBytes,
+  readMaxPdfUploadBytes,
+  resolveDbMigrationsRun,
+  validateEnvironment,
+} from './env.validation';
 
 describe('environment validation', () => {
   it('enables database migrations by default', () => {
@@ -31,6 +36,15 @@ describe('environment validation', () => {
     expect(validateEnvironment({})['MAX_IMAGE_UPLOAD_BYTES']).toBe(5 * 1024 * 1024);
     expect(() => readMaxImageUploadBytes('0')).toThrow(
       'MAX_IMAGE_UPLOAD_BYTES must be a positive integer',
+    );
+  });
+
+  it('defaults and validates the maximum PDF upload size', () => {
+    expect(readMaxPdfUploadBytes()).toBe(25 * 1024 * 1024);
+    expect(readMaxPdfUploadBytes('2048')).toBe(2048);
+    expect(validateEnvironment({})['MAX_PDF_UPLOAD_BYTES']).toBe(25 * 1024 * 1024);
+    expect(() => readMaxPdfUploadBytes('0')).toThrow(
+      'MAX_PDF_UPLOAD_BYTES must be a positive integer',
     );
   });
 });
