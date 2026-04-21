@@ -72,8 +72,14 @@
       <button type="button" class="tool-button" [disabled]="!isTableActive()" (click)="addTableRow()">
         Zeile +
       </button>
+      <button type="button" class="tool-button" [disabled]="!isTableActive()" (click)="removeTableRow()">
+        Zeile -
+      </button>
       <button type="button" class="tool-button" [disabled]="!isTableActive()" (click)="addTableColumn()">
         Spalte +
+      </button>
+      <button type="button" class="tool-button" [disabled]="!isTableActive()" (click)="removeTableColumn()">
+        Spalte -
       </button>
       <button type="button" class="tool-button danger" [disabled]="!isTableActive()" (click)="deleteTable()">
         Entfernen

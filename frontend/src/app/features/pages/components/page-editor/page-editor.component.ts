@@ -416,8 +416,16 @@ export class PageEditorComponent implements AfterViewInit, OnDestroy {
     this.editor?.chain().focus().addRowAfter().run();
   }
 
+  removeTableRow(): void {
+    this.editor?.chain().focus().deleteRow().run();
+  }
+
   addTableColumn(): void {
     this.editor?.chain().focus().addColumnAfter().run();
+  }
+
+  removeTableColumn(): void {
+    this.editor?.chain().focus().deleteColumn().run();
   }
 
   deleteTable(): void {
