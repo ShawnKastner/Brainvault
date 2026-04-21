@@ -108,7 +108,39 @@ docker compose --env-file .env.registry -f docker-compose.registry.yml up -d
 
 ---
 
-## 7) Sicherheits-Checklist
+## 7) PDF-404 auf dem Homeserver prüfen
+
+Wenn die PDF-Liste sichtbar ist, der Viewer aber `404 Not Found` meldet, sind meist noch Datenbank-Metadaten vorhanden, während die Datei im Upload-Speicher fehlt. Das Backend sucht PDFs unter `UPLOAD_DIR=/app/uploads`, konkret im Ordner `/app/uploads/pdfs`.
+
+Prüfe zuerst, ob das Compose-Setup den Upload-Speicher mountet:
+
+```bash
+docker compose --env-file .env.registry -f docker-compose.registry.yml ps
+docker compose --env-file .env.registry -f docker-compose.registry.yml exec backend printenv UPLOAD_DIR
+docker compose --env-file .env.registry -f docker-compose.registry.yml exec backend ls -la /app/uploads
+docker compose --env-file .env.registry -f docker-compose.registry.yml exec backend ls -la /app/uploads/pdfs
+```
+
+Im Registry-Compose muss beim Backend dieses Volume vorhanden sein:
+
+```yaml
+volumes:
+  - uploads:/app/uploads
+```
+
+und unten in der Datei:
+
+```yaml
+volumes:
+  pgdata:
+  uploads:
+```
+
+Wichtig beim Umzug oder Neuaufsetzen: Die Postgres-Daten (`pgdata`) und die Upload-Dateien (`uploads`) gehören zusammen. Wenn nur die Datenbank wiederhergestellt wird, zeigen die PDF-Einträge auf Dateien, die im neuen `uploads`-Volume nicht existieren.
+
+---
+
+## 8) Sicherheits-Checklist
 
 - Repository privat
 - GHCR-Packages privat

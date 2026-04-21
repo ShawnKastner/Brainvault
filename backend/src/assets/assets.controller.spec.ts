@@ -53,6 +53,7 @@ describe(AssetsController.name, () => {
         originalName: 'file.pdf',
         size: 12,
       }),
+      ensurePdfReadable: jest.fn().mockResolvedValue(undefined),
       deletePdf: jest.fn().mockResolvedValue(undefined),
     } as unknown as AssetsService;
     const controller = new AssetsController(service);
@@ -68,9 +69,11 @@ describe(AssetsController.name, () => {
       id: 'pdf-1',
       url: '/api/assets/pdfs/pdf-1',
     });
+    await expect(controller.checkPdf('pdf-1')).resolves.toBeUndefined();
     await expect(controller.getPdf('pdf-1')).resolves.toBeDefined();
     await expect(controller.deletePdf('pdf-1')).resolves.toBeUndefined();
     expect(service.savePdf).toHaveBeenCalledWith(file);
+    expect(service.ensurePdfReadable).toHaveBeenCalledWith('pdf-1');
     expect(service.openPdf).toHaveBeenCalledWith('pdf-1');
     expect(service.deletePdf).toHaveBeenCalledWith('pdf-1');
   });

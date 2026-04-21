@@ -76,4 +76,12 @@ describe(StorageApiService.name, () => {
     expect(request.request.method).toBe('DELETE');
     request.flush(null);
   });
+
+  it('checks PDF availability with HEAD', () => {
+    service.checkPdf('pdf 1').subscribe();
+
+    const request = http.expectOne('/api/assets/pdfs/pdf%201');
+    expect(request.request.method).toBe('HEAD');
+    request.flush(null);
+  });
 });

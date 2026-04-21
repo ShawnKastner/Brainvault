@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Head,
   HttpCode,
   HttpStatus,
   Param,
@@ -94,6 +95,15 @@ export class AssetsController {
     }
 
     return this.assetsService.savePdf(file);
+  }
+
+  @Head('pdfs/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'PDF-Datei ist vorhanden.' })
+  @ApiBadRequestResponse({ description: 'Ungültige PDF-ID.' })
+  @ApiNotFoundResponse({ description: 'PDF nicht gefunden.' })
+  async checkPdf(@Param('id') id: string): Promise<void> {
+    await this.assetsService.ensurePdfReadable(id);
   }
 
   @Get('pdfs/:id')

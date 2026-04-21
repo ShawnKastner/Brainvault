@@ -1,4 +1,5 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DOCUMENT } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { finalize } from 'rxjs';
@@ -7,6 +8,11 @@ import type { PdfAssetResponse } from '../../../../core/models/storage.model';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 
 const PDF_CONTENT_TYPE = 'application/pdf';
+const COMPACT_STORAGE_MEDIA_QUERY = '(max-width: 1100px)';
+
+type PdfPreviewStatus =
+  | { id: null; state: 'idle' }
+  | { id: string; state: 'checking' | 'available' | 'missing' | 'error' };
 
 @Component({
   selector: 'bv-storage',
@@ -17,6 +23,7 @@ const PDF_CONTENT_TYPE = 'application/pdf';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StorageComponent implements OnInit {
+  private readonly document = inject(DOCUMENT);
   private readonly storageApi = inject(StorageApiService);
   private readonly sanitizer = inject(DomSanitizer);
 
@@ -28,6 +35,10 @@ export class StorageComponent implements OnInit {
   protected readonly deleting = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly deleteCandidate = signal<PdfAssetResponse | null>(null);
+  protected readonly storagePanelCollapsed = signal(false);
+  protected readonly pdfPreviewStatus = signal<PdfPreviewStatus>({ id: null, state: 'idle' });
+
+  private pdfCheckRun = 0;
 
   protected readonly filteredPdfs = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
@@ -46,9 +57,33 @@ export class StorageComponent implements OnInit {
 
   protected readonly selectedPdfUrl = computed<SafeResourceUrl | null>(() => {
     const pdf = this.selectedPdf();
-    if (!pdf) return null;
+    const status = this.pdfPreviewStatus();
+    if (!pdf || status.id !== pdf.id || status.state !== 'available') return null;
 
     return this.sanitizer.bypassSecurityTrustResourceUrl(this.storageApi.getPdfUrl(pdf.id));
+  });
+
+  protected readonly pdfPreviewChecking = computed(() => {
+    const pdf = this.selectedPdf();
+    const status = this.pdfPreviewStatus();
+
+    return pdf !== null && status.id === pdf.id && status.state === 'checking';
+  });
+
+  protected readonly pdfPreviewError = computed(() => {
+    const pdf = this.selectedPdf();
+    const status = this.pdfPreviewStatus();
+    if (!pdf || status.id !== pdf.id) return null;
+
+    if (status.state === 'missing') {
+      return 'Die PDF ist in der Datenbank gelistet, fehlt aber im Upload-Speicher.';
+    }
+
+    if (status.state === 'error') {
+      return 'Die PDF-Datei konnte nicht geprüft werden.';
+    }
+
+    return null;
   });
 
   protected readonly storageSummary = computed(() => {
@@ -73,6 +108,7 @@ export class StorageComponent implements OnInit {
         next: (pdfs) => {
           this.pdfs.set(pdfs);
           this.ensureSelectedPdf();
+          this.verifySelectedPdf();
         },
         error: () => this.error.set('Die PDFs konnten nicht geladen werden.'),
       });
@@ -84,6 +120,14 @@ export class StorageComponent implements OnInit {
 
   protected selectPdf(pdf: PdfAssetResponse): void {
     this.selectedPdfId.set(pdf.id);
+    if (this.isCompactStorageLayout()) {
+      this.storagePanelCollapsed.set(true);
+    }
+    this.verifySelectedPdf();
+  }
+
+  protected toggleStoragePanel(): void {
+    this.storagePanelCollapsed.update((collapsed) => !collapsed);
   }
 
   protected uploadSelectedPdf(event: Event): void {
@@ -107,6 +151,10 @@ export class StorageComponent implements OnInit {
         next: (pdf) => {
           this.pdfs.update((pdfs) => [pdf, ...pdfs.filter((entry) => entry.id !== pdf.id)]);
           this.selectedPdfId.set(pdf.id);
+          if (this.isCompactStorageLayout()) {
+            this.storagePanelCollapsed.set(true);
+          }
+          this.verifySelectedPdf();
         },
         error: () => this.error.set('Die PDF-Datei konnte nicht hochgeladen werden.'),
       });
@@ -139,6 +187,7 @@ export class StorageComponent implements OnInit {
             this.selectedPdfId.set(this.pdfs()[0]?.id ?? null);
           }
           this.deleteCandidate.set(null);
+          this.verifySelectedPdf();
         },
         error: () => this.error.set('Die PDF-Datei konnte nicht gelöscht werden.'),
       });
@@ -165,4 +214,46 @@ export class StorageComponent implements OnInit {
 
     this.selectedPdfId.set(pdfs[0]?.id ?? null);
   }
+
+  private verifySelectedPdf(): void {
+    const pdf = this.selectedPdf();
+    const run = ++this.pdfCheckRun;
+
+    if (!pdf) {
+      this.pdfPreviewStatus.set({ id: null, state: 'idle' });
+      return;
+    }
+
+    this.pdfPreviewStatus.set({ id: pdf.id, state: 'checking' });
+
+    this.storageApi.checkPdf(pdf.id).subscribe({
+      next: () => {
+        if (this.isCurrentPdfCheck(run, pdf.id)) {
+          this.pdfPreviewStatus.set({ id: pdf.id, state: 'available' });
+        }
+      },
+      error: (error: unknown) => {
+        if (!this.isCurrentPdfCheck(run, pdf.id)) return;
+
+        this.pdfPreviewStatus.set({
+          id: pdf.id,
+          state: isNotFoundError(error) ? 'missing' : 'error',
+        });
+      },
+    });
+  }
+
+  private isCurrentPdfCheck(run: number, pdfId: string): boolean {
+    return run === this.pdfCheckRun && this.selectedPdfId() === pdfId;
+  }
+
+  private isCompactStorageLayout(): boolean {
+    return this.document.defaultView?.matchMedia(COMPACT_STORAGE_MEDIA_QUERY).matches ?? false;
+  }
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof HttpErrorResponse
+    ? error.status === 404
+    : typeof error === 'object' && error !== null && 'status' in error && error.status === 404;
 }

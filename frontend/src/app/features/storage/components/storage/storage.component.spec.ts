@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { StorageApiService } from '../../../../core/api/storage-api.service';
 import type { PdfAssetResponse } from '../../../../core/models/storage.model';
 import { StorageComponent } from './storage.component';
@@ -37,10 +37,13 @@ describe(StorageComponent.name, () => {
       'getPdfs',
       'uploadPdf',
       'deletePdf',
+      'checkPdf',
       'getPdfUrl',
     ]);
     storageApi.getPdfs.and.returnValue(of(pdfs));
+    storageApi.checkPdf.and.returnValue(of(undefined));
     storageApi.getPdfUrl.and.callFake((id) => `/api/assets/pdfs/${id}`);
+    setCompactLayout(false);
 
     await TestBed.configureTestingModule({
       imports: [StorageComponent],
@@ -76,6 +79,51 @@ describe(StorageComponent.name, () => {
 
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
     expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-2');
+  });
+
+  it('toggles the storage file panel', () => {
+    const view = fixture.nativeElement.querySelector('.storage-view') as HTMLElement;
+    const toggle = fixture.nativeElement.querySelector('.storage-panel-toggle') as HTMLButtonElement;
+
+    expect(view.classList).not.toContain('storage-panel-collapsed');
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(view.classList).toContain('storage-panel-collapsed');
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(view.classList).not.toContain('storage-panel-collapsed');
+  });
+
+  it('collapses the file panel after selecting a PDF in compact layout', () => {
+    setCompactLayout(true);
+
+    const row = fixture.debugElement.queryAll(By.css('.pdf-select'))[1].nativeElement as HTMLButtonElement;
+    row.click();
+    fixture.detectChanges();
+
+    const view = fixture.nativeElement.querySelector('.storage-view') as HTMLElement;
+    expect(view.classList).toContain('storage-panel-collapsed');
+    const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
+    expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-2');
+  });
+
+  it('shows a preview error when the selected PDF file is missing', () => {
+    storageApi.checkPdf.and.callFake((id) =>
+      id === 'pdf-2' ? throwError(() => ({ status: 404 })) : of(undefined),
+    );
+
+    const row = fixture.debugElement.queryAll(By.css('.pdf-select'))[1].nativeElement as HTMLButtonElement;
+    row.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('iframe')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Die PDF ist in der Datenbank gelistet, fehlt aber im Upload-Speicher.',
+    );
   });
 
   it('uploads a PDF and selects the uploaded entry', () => {
@@ -137,5 +185,24 @@ describe(StorageComponent.name, () => {
       value: [file],
     });
     input.dispatchEvent(new Event('change'));
+  }
+
+  function setCompactLayout(matches: boolean): void {
+    const matcher = jasmine.createSpy('matchMedia').and.returnValue({
+      matches,
+      media: '(max-width: 1100px)',
+      onchange: null,
+      addListener: jasmine.createSpy('addListener'),
+      removeListener: jasmine.createSpy('removeListener'),
+      addEventListener: jasmine.createSpy('addEventListener'),
+      removeEventListener: jasmine.createSpy('removeEventListener'),
+      dispatchEvent: jasmine.createSpy('dispatchEvent'),
+    } as unknown as MediaQueryList);
+
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: matcher,
+    });
   }
 });

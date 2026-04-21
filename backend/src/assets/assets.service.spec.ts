@@ -303,6 +303,23 @@ describe(AssetsService.name, () => {
     expect(assetsRepo.findOne).toHaveBeenCalledWith({ where: { id: pdfId, type: 'pdf' } });
   });
 
+  it('checks readable PDFs without returning a stream', async () => {
+    const filename = '11111111-1111-4111-8111-111111111111.pdf';
+    assetsRepo.findOne.mockResolvedValue(createAsset({
+      id: pdfId,
+      filename,
+      type: 'pdf',
+      originalName: 'briefing.pdf',
+      contentType: 'application/pdf',
+      size: 12,
+    }));
+    await mkdir(join(uploadDir, 'pdfs'), { recursive: true });
+    await writeFile(join(uploadDir, 'pdfs', filename), Buffer.from('%PDF-1.7\nbody'));
+
+    await expect(service.ensurePdfReadable(pdfId)).resolves.toBeUndefined();
+    expect(assetsRepo.findOne).toHaveBeenCalledWith({ where: { id: pdfId, type: 'pdf' } });
+  });
+
   it('rejects invalid and missing PDFs', async () => {
     await expect(service.openPdf('not-a-uuid')).rejects.toBeInstanceOf(BadRequestException);
 
@@ -316,6 +333,7 @@ describe(AssetsService.name, () => {
       contentType: 'application/pdf',
     }));
     await expect(service.openPdf(pdfId)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.ensurePdfReadable(pdfId)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('deletes PDF files and metadata', async () => {

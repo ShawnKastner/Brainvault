@@ -1,5 +1,5 @@
-<section class="storage-view">
-  <aside class="storage-panel" aria-label="PDF Storage">
+<section class="storage-view" [class.storage-panel-collapsed]="storagePanelCollapsed()">
+  <aside class="storage-panel" id="storage-pdf-panel" aria-label="PDF Storage">
     <header class="storage-header">
       <div>
         <p class="storage-eyebrow">{{ storageSummary() }}</p>
@@ -84,13 +84,37 @@
   <main class="storage-preview">
     @if (selectedPdf(); as pdf) {
       <header class="preview-header">
+        <button
+          type="button"
+          class="storage-panel-toggle"
+          [attr.aria-controls]="'storage-pdf-panel'"
+          [attr.aria-expanded]="!storagePanelCollapsed()"
+          (click)="toggleStoragePanel()"
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M2.5 3.5h11M2.5 8h11M2.5 12.5h11" />
+          </svg>
+          <span>{{ storagePanelCollapsed() ? 'Dateien' : 'Liste ausblenden' }}</span>
+        </button>
         <div>
           <p>{{ formatFileSize(pdf.size) }}</p>
           <h2>{{ pdf.originalName }}</h2>
         </div>
       </header>
 
-      @if (selectedPdfUrl(); as url) {
+      @if (pdfPreviewChecking()) {
+        <div class="preview-status">
+          <p>PDF wird geprüft...</p>
+        </div>
+      } @else if (pdfPreviewError(); as message) {
+        <div class="preview-status preview-error" role="alert">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+            <path d="M24 6 44 40H4L24 6Z" />
+            <path d="M24 17v11M24 34h.01" />
+          </svg>
+          <p>{{ message }}</p>
+        </div>
+      } @else if (selectedPdfUrl(); as url) {
         <iframe class="pdf-frame" [src]="url" [title]="pdf.originalName"></iframe>
       }
     } @else {

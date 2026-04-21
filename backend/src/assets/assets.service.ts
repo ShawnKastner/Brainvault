@@ -145,26 +145,7 @@ export class AssetsService {
   }
 
   async openPdf(id: string): Promise<StoredPdf> {
-    if (!isUuid(id)) {
-      throw new BadRequestException('Ungültige PDF-ID.');
-    }
-
-    const asset = await this.assetsRepo.findOne({ where: { id, type: 'pdf' } });
-    if (!asset) {
-      throw new NotFoundException('PDF nicht gefunden.');
-    }
-
-    if (!isStoredPdfFilename(asset.filename)) {
-      throw new BadRequestException('Ungültiger PDF-Name.');
-    }
-
-    const pdfPath = this.resolvePdfPath(asset.filename);
-
-    try {
-      await access(pdfPath, constants.R_OK);
-    } catch {
-      throw new NotFoundException('PDF nicht gefunden.');
-    }
+    const { asset, pdfPath } = await this.findReadablePdf(id);
 
     return {
       stream: createReadStream(pdfPath),
@@ -173,6 +154,10 @@ export class AssetsService {
       originalName: normalizeAssetOriginalName(asset.originalName),
       size: asset.size,
     };
+  }
+
+  async ensurePdfReadable(id: string): Promise<void> {
+    await this.findReadablePdf(id);
   }
 
   async deletePdf(id: string): Promise<void> {
@@ -282,6 +267,31 @@ export class AssetsService {
       throw new BadRequestException('Ungültiger PDF-Name.');
     }
     return pdfPath;
+  }
+
+  private async findReadablePdf(id: string): Promise<{ asset: Asset; pdfPath: string }> {
+    if (!isUuid(id)) {
+      throw new BadRequestException('Ungültige PDF-ID.');
+    }
+
+    const asset = await this.assetsRepo.findOne({ where: { id, type: 'pdf' } });
+    if (!asset) {
+      throw new NotFoundException('PDF nicht gefunden.');
+    }
+
+    if (!isStoredPdfFilename(asset.filename)) {
+      throw new BadRequestException('Ungültiger PDF-Name.');
+    }
+
+    const pdfPath = this.resolvePdfPath(asset.filename);
+
+    try {
+      await access(pdfPath, constants.R_OK);
+    } catch {
+      throw new NotFoundException('PDF nicht gefunden.');
+    }
+
+    return { asset, pdfPath };
   }
 
   private maxImageUploadBytes(): number {

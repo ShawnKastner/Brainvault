@@ -24,6 +24,10 @@ export class StorageApiService {
     return this.http.delete<void>(this.getPdfUrl(id));
   }
 
+  checkPdf(id: string): Observable<void> {
+    return this.http.head<void>(this.getPdfUrl(id));
+  }
+
   getPdfUrl(id: string): string {
     return `${this.apiUrl}/assets/pdfs/${encodeURIComponent(id)}`;
   }
