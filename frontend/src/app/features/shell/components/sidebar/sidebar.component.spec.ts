@@ -115,6 +115,21 @@ describe(SidebarComponent.name, () => {
     expect(avatar.getAttribute('aria-label')).toBe('Einstellungen öffnen');
   });
 
+  it('emits storage selections and marks the storage item active', () => {
+    let opened = 0;
+    fixture.componentRef.setInput('storageActive', true);
+    fixture.componentInstance.selectStorage.subscribe(() => {
+      opened += 1;
+    });
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('.storage-nav-button') as HTMLButtonElement;
+    button.click();
+
+    expect(opened).toBe(1);
+    expect(button.classList).toContain('active');
+  });
+
   it('keeps short clicks as page selection', () => {
     const selected: string[] = [];
     fixture.componentRef.setInput('spaces', [sourceSpace]);

@@ -13,7 +13,10 @@ import { Asset } from './entities/asset.entity';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         limits: {
-          fileSize: config.get<number>('app.maxImageUploadBytes', 5 * 1024 * 1024),
+          fileSize: Math.max(
+            config.get<number>('app.maxImageUploadBytes', 5 * 1024 * 1024),
+            config.get<number>('app.maxPdfUploadBytes', 25 * 1024 * 1024),
+          ),
         },
       }),
     }),

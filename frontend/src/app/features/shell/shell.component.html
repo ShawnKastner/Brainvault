@@ -5,12 +5,14 @@
     [saving]="store.saving()"
     [dragDisabled]="editMode()"
     [openSpaces]="openSpaces()"
-    [activePageId]="store.activePageId()"
-    [activeSpaceId]="activeSidebarSpaceId()"
+    [activePageId]="storageActive() ? null : store.activePageId()"
+    [activeSpaceId]="storageActive() ? null : activeSidebarSpaceId()"
+    [storageActive]="storageActive()"
     [searchQuery]="store.searchQuery()"
     (toggleSpace)="toggleSpace($event)"
     (selectSpace)="selectSpace($event)"
     (selectPage)="selectPage($event)"
+    (selectStorage)="selectStorage()"
     (searchQueryChange)="store.setSearchQuery($event)"
     (createSpace)="createSpace($event)"
     (deleteSpace)="requestDeleteSpace($event)"
@@ -24,6 +26,7 @@
       [activePage]="store.activePage()"
       [editMode]="editMode()"
       [saving]="store.saving()"
+      [storageActive]="storageActive()"
       (showCreatePage)="showNewPage.set(!showNewPage())"
       (startEdit)="editMode.set(true)"
       (deletePage)="deleteActivePage()"
@@ -38,7 +41,7 @@
       </div>
     }
 
-    @if (showNewPage()) {
+    @if (!storageActive() && showNewPage()) {
       <form class="new-page-bar" [formGroup]="newPageForm" (ngSubmit)="submitNewPage()">
         <input class="new-page-input" formControlName="title" placeholder="Titel der neuen Seite..." />
         <select class="new-page-select" formControlName="spaceId">
@@ -55,7 +58,9 @@
     }
 
     <section class="content">
-      @if (store.activePage(); as page) {
+      @if (storageActive()) {
+        <bv-storage />
+      } @else if (store.activePage(); as page) {
         @if (editMode()) {
           <bv-page-editor
             [page]="page"

@@ -1,0 +1,79 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { API_URL } from '../config/api-url.token';
+import { StorageApiService } from './storage-api.service';
+
+describe(StorageApiService.name, () => {
+  let service: StorageApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        StorageApiService,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: API_URL, useValue: '/api' },
+      ],
+    });
+
+    service = TestBed.inject(StorageApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('loads PDF assets', () => {
+    service.getPdfs().subscribe((pdfs) => {
+      expect(pdfs.length).toBe(1);
+      expect(pdfs[0].originalName).toBe('briefing.pdf');
+    });
+
+    const request = http.expectOne('/api/assets/pdfs');
+    expect(request.request.method).toBe('GET');
+    request.flush([
+      {
+        id: 'pdf-1',
+        url: '/api/assets/pdfs/pdf-1',
+        filename: 'file.pdf',
+        originalName: 'briefing.pdf',
+        contentType: 'application/pdf',
+        size: 12,
+        createdAt: '2026-04-21T09:15:00.000Z',
+        updatedAt: '2026-04-21T09:15:00.000Z',
+      },
+    ]);
+  });
+
+  it('uploads PDFs as multipart form data', () => {
+    const file = new File(['%PDF-1.7'], 'briefing.pdf', { type: 'application/pdf' });
+
+    service.uploadPdf(file).subscribe();
+
+    const request = http.expectOne('/api/assets/pdfs');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body instanceof FormData).toBe(true);
+    expect((request.request.body as FormData).get('file')).toBe(file);
+    request.flush({
+      id: 'pdf-1',
+      url: '/api/assets/pdfs/pdf-1',
+      filename: 'file.pdf',
+      originalName: 'briefing.pdf',
+      contentType: 'application/pdf',
+      size: 12,
+      createdAt: '2026-04-21T09:15:00.000Z',
+      updatedAt: '2026-04-21T09:15:00.000Z',
+    });
+  });
+
+  it('deletes PDFs and exposes the viewer URL', () => {
+    expect(service.getPdfUrl('pdf 1')).toBe('/api/assets/pdfs/pdf%201');
+
+    service.deletePdf('pdf-1').subscribe();
+
+    const request = http.expectOne('/api/assets/pdfs/pdf-1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null);
+  });
+});

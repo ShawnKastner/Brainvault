@@ -93,6 +93,7 @@
 .nav-section-link,
 .nav-section-delete,
 .nav-item,
+.storage-nav-button,
 .new-space-button {
   background: transparent;
   border: 0;
@@ -100,6 +101,31 @@
   cursor: pointer;
   font: inherit;
   text-align: left;
+}
+
+.storage-nav-button {
+  align-items: center;
+  border-radius: var(--radius-md);
+  color: var(--color-text-soft);
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  margin: 0.35rem 0.75rem 0.25rem;
+  padding: 0.48rem 0.65rem;
+  width: calc(100% - 1.5rem);
+}
+
+.storage-nav-button:hover,
+.storage-nav-button.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.storage-nav-button svg {
+  flex: 0 0 auto;
+  height: 0.92rem;
+  width: 0.92rem;
 }
 
 .nav-section-header {

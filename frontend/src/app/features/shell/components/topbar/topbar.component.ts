@@ -16,6 +16,7 @@ export class TopbarComponent {
   readonly activePage = input<PageResponse | null>(null);
   readonly editMode = input(false);
   readonly saving = input(false);
+  readonly storageActive = input(false);
 
   readonly showCreatePage = output<void>();
   readonly startEdit = output<void>();

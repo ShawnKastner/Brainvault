@@ -24,6 +24,7 @@ import {
   SpaceOverviewComponent,
   type RenameSpaceRequest,
 } from '../spaces/components/space-overview/space-overview.component';
+import { StorageComponent } from '../storage/components/storage/storage.component';
 import { SidebarComponent, type MovePageToSpaceRequest } from './components/sidebar/sidebar.component';
 import { TopbarComponent } from './components/topbar/topbar.component';
 
@@ -45,6 +46,7 @@ export const SIDEBAR_CLOSED_SPACES_STORAGE_KEY = 'brainvault.sidebar.closedSpace
     SettingsModalComponent,
     SidebarComponent,
     SpaceOverviewComponent,
+    StorageComponent,
     TopbarComponent,
   ],
   templateUrl: './shell.component.html',
@@ -64,6 +66,7 @@ export class ShellComponent {
   );
   protected readonly editMode = signal(false);
   protected readonly showNewPage = signal(false);
+  protected readonly storageActive = signal(false);
   protected readonly settingsOpen = signal(false);
   protected readonly deleteDialog = signal<DeleteDialog | null>(null);
 
@@ -116,8 +119,17 @@ export class ShellComponent {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const pageId = params.get('pageId');
       const spaceId = params.get('spaceId');
+      const storageActive = this.isStorageRoute();
       this.editMode.set(false);
       this.showNewPage.set(false);
+      this.storageActive.set(storageActive);
+
+      if (storageActive) {
+        this.store.selectPage(null);
+        this.store.selectSpace(null);
+        this.store.loadSpaces(null);
+        return;
+      }
 
       if (pageId) {
         this.store.selectPage(pageId);
@@ -151,6 +163,7 @@ export class ShellComponent {
 
   protected selectSpace(spaceId: string): void {
     this.openSpacePath(spaceId);
+    this.storageActive.set(false);
     this.editMode.set(false);
     this.showNewPage.set(false);
     void this.router.navigate(['/spaces', spaceId]);
@@ -164,9 +177,19 @@ export class ShellComponent {
       this.openSpaceIds(spaceEntry.path.map((space) => space.id));
     }
 
+    this.storageActive.set(false);
     this.editMode.set(false);
     this.showNewPage.set(false);
     void this.router.navigate(['/pages', pageId]);
+  }
+
+  protected selectStorage(): void {
+    this.storageActive.set(true);
+    this.editMode.set(false);
+    this.showNewPage.set(false);
+    this.store.selectPage(null);
+    this.store.selectSpace(null);
+    void this.router.navigate(['/storage']);
   }
 
   protected createSpace(request: CreateSpaceRequest): void {
@@ -260,6 +283,10 @@ export class ShellComponent {
     this.editMode.set(false);
     this.showNewPage.set(false);
     void this.router.navigate(nextPageId ? ['/pages', nextPageId] : ['/']);
+  }
+
+  private isStorageRoute(): boolean {
+    return this.route.snapshot.routeConfig?.path === 'storage';
   }
 
   private openSpacePath(spaceId: string): void {

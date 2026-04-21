@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, ParamMap, Router, convertToParamMap } from '@angular/router';
+import { Observable, of } from 'rxjs';
 import type { PageResponse } from '../../core/models/page.model';
 import type { SpaceWithPagesResponse } from '../../core/models/space.model';
 import { SettingsService } from '../../core/services/settings.service';
@@ -88,17 +88,25 @@ class KnowledgeBaseStoreStub {
 describe(ShellComponent.name, () => {
   let store: KnowledgeBaseStoreStub;
   let router: jasmine.SpyObj<Router>;
+  let activatedRoute: {
+    paramMap: Observable<ParamMap>;
+    snapshot: { routeConfig: { path: string } };
+  };
 
   beforeEach(async () => {
     window.localStorage.removeItem(SIDEBAR_CLOSED_SPACES_STORAGE_KEY);
     store = new KnowledgeBaseStoreStub();
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
     router.navigate.and.resolveTo(true);
+    activatedRoute = {
+      paramMap: of(convertToParamMap({})),
+      snapshot: { routeConfig: { path: '' } },
+    };
 
     TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({})) } },
+        { provide: ActivatedRoute, useValue: activatedRoute },
         { provide: Router, useValue: router },
         { provide: KnowledgeBaseStore, useValue: store },
         { provide: SettingsService, useValue: {} },
@@ -195,6 +203,28 @@ describe(ShellComponent.name, () => {
     ]);
   });
 
+  it('activates storage mode from the storage route and hides page selection', () => {
+    activatedRoute.snapshot.routeConfig.path = 'storage';
+
+    const fixture = createShell();
+
+    expect(shell(fixture).storageActive()).toBe(true);
+    expect(store.activePageId()).toBeNull();
+    expect(store.activeSpaceId()).toBeNull();
+    expect(store.loadSpaces).toHaveBeenCalledWith(null);
+  });
+
+  it('navigates to storage from the sidebar action', () => {
+    const fixture = createShell();
+
+    shell(fixture).selectStorage();
+
+    expect(shell(fixture).storageActive()).toBe(true);
+    expect(store.activePageId()).toBeNull();
+    expect(store.activeSpaceId()).toBeNull();
+    expect(router.navigate).toHaveBeenCalledWith(['/storage']);
+  });
+
   function createShell(): ComponentFixture<ShellComponent> {
     const fixture = TestBed.createComponent(ShellComponent);
     fixture.detectChanges();
@@ -203,15 +233,19 @@ describe(ShellComponent.name, () => {
 
   function shell(fixture: ComponentFixture<ShellComponent>): {
     openSpaces: () => Partial<Record<string, boolean>>;
+    storageActive: () => boolean;
     toggleSpace: (spaceId: string) => void;
     selectPage: (pageId: string) => void;
+    selectStorage: () => void;
     requestDeleteSpace: (space: SpaceWithPagesResponse) => void;
     confirmDelete: () => void;
   } {
     return fixture.componentInstance as unknown as {
       openSpaces: () => Partial<Record<string, boolean>>;
+      storageActive: () => boolean;
       toggleSpace: (spaceId: string) => void;
       selectPage: (pageId: string) => void;
+      selectStorage: () => void;
       requestDeleteSpace: (space: SpaceWithPagesResponse) => void;
       confirmDelete: () => void;
     };

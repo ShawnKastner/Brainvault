@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { AssetsService } from '../assets/assets.service';
 import { Space } from '../spaces/entities/space.entity';
 import { Page } from './entities/page.entity';
 import { PagesService } from './pages.service';
@@ -58,6 +59,7 @@ describe(PagesService.name, () => {
     service = new PagesService(
       pagesRepo as unknown as Repository<Page>,
       spacesRepo as unknown as Repository<Space>,
+      {} as AssetsService,
     );
   });
 
