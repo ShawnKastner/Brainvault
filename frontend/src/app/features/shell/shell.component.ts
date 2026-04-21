@@ -7,6 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -30,6 +31,8 @@ type DeleteDialog =
   | { kind: 'page'; page: PageResponse }
   | { kind: 'space'; space: SpaceWithPagesResponse };
 
+export const SIDEBAR_CLOSED_SPACES_STORAGE_KEY = 'brainvault.sidebar.closedSpaces.v1';
+
 @Component({
   selector: 'bv-shell',
   standalone: true,
@@ -49,13 +52,16 @@ type DeleteDialog =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ShellComponent {
+  private readonly document = inject(DOCUMENT);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly settingsService = inject(SettingsService);
 
   protected readonly store = inject(KnowledgeBaseStore);
-  protected readonly openSpaces = signal<Partial<Record<string, boolean>>>({});
+  protected readonly openSpaces = signal<Partial<Record<string, boolean>>>(
+    this.readClosedSpaceOverrides(),
+  );
   protected readonly editMode = signal(false);
   protected readonly showNewPage = signal(false);
   protected readonly settingsOpen = signal(false);
@@ -121,9 +127,13 @@ export class ShellComponent {
 
       this.store.selectSpace(spaceId);
       if (spaceId) {
-        this.openSpaces.update((spaces) => ({ ...spaces, [spaceId]: true }));
+        this.openSpaceIds([spaceId]);
       }
       this.store.loadSpaces(null);
+    });
+
+    effect(() => {
+      this.writeClosedSpaceOverrides(this.openSpaces());
     });
 
     effect(() => {
@@ -135,9 +145,8 @@ export class ShellComponent {
   }
 
   protected toggleSpace(spaceId: string): void {
-    const isFirstSpace = this.store.spaces()[0]?.id === spaceId;
-    const currentValue = this.openSpaces()[spaceId] ?? isFirstSpace;
-    this.openSpaces.update((spaces) => ({ ...spaces, [spaceId]: !currentValue }));
+    const currentValue = this.openSpaces()[spaceId] ?? true;
+    this.setSpaceOpen(spaceId, !currentValue);
   }
 
   protected selectSpace(spaceId: string): void {
@@ -152,10 +161,7 @@ export class ShellComponent {
       .flattenedSpaces()
       .find((entry) => entry.space.pages.some((page) => page.id === pageId));
     if (spaceEntry) {
-      this.openSpaces.update((spaces) => ({
-        ...spaces,
-        ...Object.fromEntries(spaceEntry.path.map((space) => [space.id, true])),
-      }));
+      this.openSpaceIds(spaceEntry.path.map((space) => space.id));
     }
 
     this.editMode.set(false);
@@ -165,10 +171,7 @@ export class ShellComponent {
 
   protected createSpace(request: CreateSpaceRequest): void {
     this.store.createSpace(request, (space) => {
-      this.openSpaces.update((spaces) => ({
-        ...spaces,
-        ...Object.fromEntries(this.store.activeSpacePath().map((entry) => [entry.id, true])),
-      }));
+      this.openSpaceIds(this.store.activeSpacePath().map((entry) => entry.id));
       void this.router.navigate(['/spaces', space.id]);
     });
   }
@@ -241,10 +244,7 @@ export class ShellComponent {
 
     if (dialog.kind === 'space') {
       this.store.deleteSpace(dialog.space.id, (nextPageId) => {
-        this.openSpaces.update((spaces) => {
-          const { [dialog.space.id]: _deletedSpace, ...rest } = spaces;
-          return rest;
-        });
+        this.openSpaceIds(getSpaceTreeIds(dialog.space));
         this.finishDelete(nextPageId);
       });
       return;
@@ -266,10 +266,60 @@ export class ShellComponent {
     const entry = this.store.flattenedSpaces().find((candidate) => candidate.space.id === spaceId);
     if (!entry) return;
 
-    this.openSpaces.update((spaces) => ({
-      ...spaces,
-      ...Object.fromEntries(entry.path.map((space) => [space.id, true])),
-    }));
+    this.openSpaceIds(entry.path.map((space) => space.id));
+  }
+
+  private setSpaceOpen(spaceId: string, open: boolean): void {
+    this.openSpaces.update((spaces) => {
+      const { [spaceId]: _currentSpace, ...rest } = spaces;
+      return open ? rest : { ...rest, [spaceId]: false };
+    });
+  }
+
+  private openSpaceIds(spaceIds: string[]): void {
+    this.openSpaces.update((spaces) => removeSpaceIds(spaces, spaceIds));
+  }
+
+  private readClosedSpaceOverrides(): Partial<Record<string, boolean>> {
+    const storage = this.getLocalStorage();
+    if (!storage) return {};
+
+    try {
+      const raw = storage.getItem(SIDEBAR_CLOSED_SPACES_STORAGE_KEY);
+      if (!raw) return {};
+
+      return normalizeClosedSpaceOverrides(JSON.parse(raw) as unknown);
+    } catch {
+      return {};
+    }
+  }
+
+  private writeClosedSpaceOverrides(spaces: Partial<Record<string, boolean>>): void {
+    const storage = this.getLocalStorage();
+    if (!storage) return;
+
+    const closedSpaceIds = Object.entries(spaces)
+      .filter(([, open]) => open === false)
+      .map(([spaceId]) => spaceId);
+
+    try {
+      if (closedSpaceIds.length === 0) {
+        storage.removeItem(SIDEBAR_CLOSED_SPACES_STORAGE_KEY);
+        return;
+      }
+
+      storage.setItem(SIDEBAR_CLOSED_SPACES_STORAGE_KEY, JSON.stringify(closedSpaceIds));
+    } catch {
+      // Sidebar state is a local preference and should never block navigation.
+    }
+  }
+
+  private getLocalStorage(): Storage | null {
+    try {
+      return this.document.defaultView?.localStorage ?? null;
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -279,4 +329,47 @@ function countPagesInSpaceTree(space: SpaceWithPagesResponse): number {
 
 function countDescendantSpaces(space: SpaceWithPagesResponse): number {
   return space.children.length + space.children.reduce((sum, child) => sum + countDescendantSpaces(child), 0);
+}
+
+function getSpaceTreeIds(space: SpaceWithPagesResponse): string[] {
+  return [space.id, ...space.children.flatMap((child) => getSpaceTreeIds(child))];
+}
+
+function removeSpaceIds(
+  spaces: Partial<Record<string, boolean>>,
+  spaceIds: string[],
+): Partial<Record<string, boolean>> {
+  let changed = false;
+  const nextSpaces = { ...spaces };
+
+  for (const spaceId of spaceIds) {
+    if (spaceId in nextSpaces) {
+      delete nextSpaces[spaceId];
+      changed = true;
+    }
+  }
+
+  return changed ? nextSpaces : spaces;
+}
+
+function normalizeClosedSpaceOverrides(value: unknown): Partial<Record<string, boolean>> {
+  if (Array.isArray(value)) {
+    return Object.fromEntries(
+      value
+        .filter((spaceId): spaceId is string => typeof spaceId === 'string')
+        .map((spaceId) => [spaceId, false]),
+    );
+  }
+
+  if (!isRecord(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, false] => typeof entry[0] === 'string' && entry[1] === false,
+    ),
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

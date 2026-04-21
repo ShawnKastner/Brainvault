@@ -57,13 +57,13 @@
             type="button"
             class="nav-section-expander"
             [disabled]="!hasSpaceContent(space)"
-            [attr.aria-expanded]="isSpaceOpen(space, depth, first)"
+            [attr.aria-expanded]="isSpaceOpen(space)"
             [attr.aria-label]="space.name + ' ein- oder ausklappen'"
             (click)="toggleSpace.emit(space.id)"
           >
             <svg
               class="nav-chevron"
-              [class.open]="isSpaceOpen(space, depth, first)"
+              [class.open]="isSpaceOpen(space)"
               viewBox="0 0 16 16"
               fill="currentColor"
               aria-hidden="true"
@@ -94,7 +94,7 @@
           </button>
         </div>
 
-        @if (isSpaceOpen(space, depth, first) || searchQuery()) {
+        @if (isSpaceOpen(space) || searchQuery()) {
           @if (space.pages.length > 0) {
             <div class="nav-items" [style.padding-left.rem]="1.6 + depth * 0.75">
               @for (page of space.pages; track page.id) {

@@ -113,8 +113,9 @@ export class SidebarComponent implements OnDestroy {
     this.showNewSpace.set(false);
   }
 
-  isSpaceOpen(space: SpaceWithPagesResponse, depth: number, first: boolean): boolean {
-    return this.openSpaces()[space.id] ?? (depth === 0 && first);
+  isSpaceOpen(space: SpaceWithPagesResponse): boolean {
+    if (!this.hasSpaceContent(space)) return false;
+    return this.openSpaces()[space.id] ?? true;
   }
 
   hasSpaceContent(space: SpaceWithPagesResponse): boolean {

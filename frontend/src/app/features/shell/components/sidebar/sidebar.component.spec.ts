@@ -47,6 +47,14 @@ const targetSpace: SpaceWithPagesResponse = {
   children: [],
 };
 
+const archivePage: PageResponse = {
+  ...page,
+  id: 'page-2',
+  title: 'Release Notes',
+  tags: ['release'],
+  spaceId: 'space-2',
+};
+
 describe(SidebarComponent.name, () => {
   let fixture: ComponentFixture<SidebarComponent>;
 
@@ -116,6 +124,35 @@ describe(SidebarComponent.name, () => {
     pageButton().click();
 
     expect(selected).toEqual(['page-1']);
+  });
+
+  it('opens all spaces with content by default', () => {
+    fixture.componentRef.setInput('spaces', [
+      sourceSpace,
+      {
+        ...targetSpace,
+        pages: [archivePage],
+      },
+    ]);
+    fixture.detectChanges();
+
+    const expandedStates = Array.from(
+      fixture.nativeElement.querySelectorAll('.nav-section-expander') as NodeListOf<HTMLButtonElement>,
+      (button) => button.getAttribute('aria-expanded'),
+    );
+
+    expect(expandedStates).toEqual(['true', 'true']);
+    expect(fixture.nativeElement.textContent).toContain('NestJS Architektur');
+    expect(fixture.nativeElement.textContent).toContain('Release Notes');
+  });
+
+  it('keeps explicitly closed spaces collapsed', () => {
+    fixture.componentRef.setInput('spaces', [sourceSpace]);
+    fixture.componentRef.setInput('openSpaces', { 'space-1': false });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.nav-item')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.nav-section-expander')?.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('renders nested spaces and emits space selections', () => {
