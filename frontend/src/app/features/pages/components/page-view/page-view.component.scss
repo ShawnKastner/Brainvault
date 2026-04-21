@@ -1,6 +1,9 @@
 .page-view {
+  box-sizing: border-box;
   max-width: 52rem;
+  min-width: 0;
   padding: 2.25rem 3rem 3.75rem;
+  width: 100%;
 }
 
 .page-meta,
@@ -57,6 +60,8 @@
   color: var(--color-text);
   font-size: 0.95rem;
   line-height: 1.75;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .page-body h1,
@@ -180,16 +185,25 @@
 }
 
 .page-body .tableWrapper {
+  display: block;
   margin: 1rem 0;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .page-body table {
   border-collapse: collapse;
+  display: block;
   font-size: 0.85rem;
   margin: 1rem 0;
-  min-width: 24rem;
-  width: 100%;
+  max-width: 100%;
+  min-width: 100%;
+  overflow-x: auto;
+  width: max-content;
+  -webkit-overflow-scrolling: touch;
 }
 
 .page-body th,

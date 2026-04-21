@@ -84,6 +84,28 @@ describe(PageViewComponent.name, () => {
     expect(fixture.nativeElement.textContent).toContain('Ueberschrift');
   });
 
+  it('keeps wide rendered tables scrollable inside the reading width', () => {
+    fixture.componentRef.setInput('page', {
+      ...page,
+      content: wideTableHtml(),
+      contentFormat: 'html',
+    });
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const view = host.querySelector('.page-view') as HTMLElement;
+    const body = host.querySelector('.page-body') as HTMLElement;
+    const table = host.querySelector('.page-body table') as HTMLTableElement;
+
+    expect(getComputedStyle(view).minWidth).toBe('0px');
+    expect(getComputedStyle(body).maxWidth).toBe('100%');
+    expect(getComputedStyle(body).minWidth).toBe('0px');
+    expect(getComputedStyle(table).display).toBe('block');
+    expect(getComputedStyle(table).maxWidth).toBe('100%');
+    expect(getComputedStyle(table).minWidth).toBe('100%');
+    expect(getComputedStyle(table).overflowX).toBe('auto');
+  });
+
   it('renders markdown mermaid code blocks as diagrams', async () => {
     fixture.componentRef.setInput('page', {
       ...page,
@@ -214,4 +236,14 @@ function runLinkClick(fixture: ComponentFixture<PageViewComponent>): MouseEvent 
   fixture.componentInstance.openContentLink(event);
   fixture.detectChanges();
   return event;
+}
+
+function wideTableHtml(): string {
+  const headings = Array.from({ length: 10 }, (_, index) => `<th>Spalte ${index + 1}</th>`).join('');
+  const cells = Array.from(
+    { length: 10 },
+    (_, index) => `<td>Ausfuehrlicher Tabellenwert ${index + 1}</td>`,
+  ).join('');
+
+  return `<table><thead><tr>${headings}</tr></thead><tbody><tr>${cells}</tr></tbody></table>`;
 }

@@ -128,6 +128,30 @@ describe(PageEditorComponent.name, () => {
     expect(cancelled.length).toBe(1);
   });
 
+  it('keeps inserted tables scrollable inside the editor width', () => {
+    const { fixture } = setup(basePage);
+    const component = fixture.componentInstance;
+
+    component.insertTable();
+    for (let index = 0; index < 8; index += 1) {
+      component.addTableColumn();
+    }
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const editorDocument = host.querySelector('.editor-document') as HTMLElement;
+    const wrapper = host.querySelector('.tableWrapper') as HTMLElement;
+    const table = wrapper.querySelector('table') as HTMLTableElement;
+
+    expect(getComputedStyle(editorDocument).maxWidth).toBe('100%');
+    expect(getComputedStyle(editorDocument).minWidth).toBe('0px');
+    expect(getComputedStyle(wrapper).maxWidth).toBe('100%');
+    expect(getComputedStyle(wrapper).minWidth).toBe('0px');
+    expect(getComputedStyle(wrapper).overflowX).toBe('auto');
+    expect(getComputedStyle(table).minWidth).toBe('100%');
+    expect(getComputedStyle(table).tableLayout).toBe('fixed');
+  });
+
   it('opens the link modal without using the browser prompt', () => {
     const promptSpy = spyOn(window, 'prompt');
     const { fixture } = setup(basePage);
