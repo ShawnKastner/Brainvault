@@ -1,0 +1,27 @@
+{
+  "name": "BrainVault",
+  "short_name": "BrainVault",
+  "description": "Dein persönlicher digitaler Speicher für Wissen und Ideen",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "dir": "auto",
+  "lang": "de-DE",
+  "theme_color": "#BA7517",
+  "background_color": "#F7F6F3",
+  "icons": [
+    {
+      "src": "icon512_maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon512_rounded.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
