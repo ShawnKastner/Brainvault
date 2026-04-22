@@ -107,7 +107,7 @@ export class StorageComponent implements OnInit {
       .subscribe({
         next: (pdfs) => {
           this.pdfs.set(pdfs);
-          this.ensureSelectedPdf();
+          this.clearMissingSelectedPdf();
           this.verifySelectedPdf();
         },
         error: () => this.error.set('Die PDFs konnten nicht geladen werden.'),
@@ -184,7 +184,7 @@ export class StorageComponent implements OnInit {
         next: () => {
           this.pdfs.update((pdfs) => pdfs.filter((entry) => entry.id !== pdf.id));
           if (this.selectedPdfId() === pdf.id) {
-            this.selectedPdfId.set(this.pdfs()[0]?.id ?? null);
+            this.selectedPdfId.set(null);
           }
           this.deleteCandidate.set(null);
           this.verifySelectedPdf();
@@ -207,12 +207,12 @@ export class StorageComponent implements OnInit {
     return `${mib.toFixed(mib >= 10 ? 0 : 1)} MB`;
   }
 
-  private ensureSelectedPdf(): void {
+  private clearMissingSelectedPdf(): void {
     const pdfs = this.pdfs();
     const selectedId = this.selectedPdfId();
-    if (selectedId && pdfs.some((pdf) => pdf.id === selectedId)) return;
+    if (!selectedId || pdfs.some((pdf) => pdf.id === selectedId)) return;
 
-    this.selectedPdfId.set(pdfs[0]?.id ?? null);
+    this.selectedPdfId.set(null);
   }
 
   private verifySelectedPdf(): void {

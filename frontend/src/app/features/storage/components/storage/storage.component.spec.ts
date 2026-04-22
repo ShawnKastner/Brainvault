@@ -54,13 +54,13 @@ describe(StorageComponent.name, () => {
     fixture.detectChanges();
   });
 
-  it('loads PDFs and selects the first entry for preview', () => {
+  it('loads PDFs without selecting an entry for preview', () => {
     expect(storageApi.getPdfs).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('briefing.pdf');
+    expect(fixture.nativeElement.textContent).toContain('Keine Datei ausgewählt');
 
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
-    expect(iframe).not.toBeNull();
-    expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-1');
+    expect(iframe).toBeNull();
   });
 
   it('filters PDFs by filename and switches selection', () => {
@@ -82,6 +82,10 @@ describe(StorageComponent.name, () => {
   });
 
   it('toggles the storage file panel', () => {
+    const row = fixture.debugElement.query(By.css('.pdf-select')).nativeElement as HTMLButtonElement;
+    row.click();
+    fixture.detectChanges();
+
     const view = fixture.nativeElement.querySelector('.storage-view') as HTMLElement;
     const toggle = fixture.nativeElement.querySelector('.storage-panel-toggle') as HTMLButtonElement;
 
@@ -154,6 +158,10 @@ describe(StorageComponent.name, () => {
   it('deletes a PDF after confirmation', () => {
     storageApi.deletePdf.and.returnValue(of(undefined));
 
+    const row = fixture.debugElement.query(By.css('.pdf-select')).nativeElement as HTMLButtonElement;
+    row.click();
+    fixture.detectChanges();
+
     const deleteButton = fixture.nativeElement.querySelector('.pdf-delete') as HTMLButtonElement;
     deleteButton.click();
     fixture.detectChanges();
@@ -167,7 +175,8 @@ describe(StorageComponent.name, () => {
     expect(storageApi.deletePdf).toHaveBeenCalledWith('pdf-1');
     expect(fixture.nativeElement.textContent).not.toContain('briefing.pdf');
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
-    expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-2');
+    expect(iframe).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Keine Datei ausgewählt');
   });
 
   function componentApi(): {
