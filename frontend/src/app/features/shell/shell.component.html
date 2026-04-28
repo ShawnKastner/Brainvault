@@ -8,7 +8,12 @@
     ></button>
   }
 
-  <div class="sidebar-frame" [class.open]="!compactLayout() || mobileNavOpen()">
+  <div
+    class="sidebar-frame"
+    [class.open]="!compactLayout() || mobileNavOpen()"
+    [attr.inert]="compactLayout() && !mobileNavOpen() ? '' : null"
+    [attr.aria-hidden]="compactLayout() && !mobileNavOpen() ? 'true' : null"
+  >
     <bv-sidebar
       id="app-sidebar"
       [spaces]="store.filteredSpaces()"
