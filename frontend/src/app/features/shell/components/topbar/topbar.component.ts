@@ -17,7 +17,10 @@ export class TopbarComponent {
   readonly editMode = input(false);
   readonly saving = input(false);
   readonly storageActive = input(false);
+  readonly compactLayout = input(false);
+  readonly mobileNavOpen = input(false);
 
+  readonly toggleMobileNav = output<void>();
   readonly showCreatePage = output<void>();
   readonly startEdit = output<void>();
   readonly deletePage = output<void>();

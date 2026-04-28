@@ -115,6 +115,21 @@ describe(SidebarComponent.name, () => {
     expect(avatar.getAttribute('aria-label')).toBe('Einstellungen öffnen');
   });
 
+  it('renders a dismiss control in compact mode and emits dismiss events', () => {
+    let dismissed = 0;
+    fixture.componentRef.setInput('compactMode', true);
+    fixture.componentInstance.dismiss.subscribe(() => {
+      dismissed += 1;
+    });
+    fixture.detectChanges();
+
+    const closeButton = fixture.nativeElement.querySelector('.sidebar-close') as HTMLButtonElement;
+    closeButton.click();
+
+    expect(closeButton.getAttribute('aria-label')).toBe('Navigation schliessen');
+    expect(dismissed).toBe(1);
+  });
+
   it('emits storage selections and marks the storage item active', () => {
     let opened = 0;
     fixture.componentRef.setInput('storageActive', true);

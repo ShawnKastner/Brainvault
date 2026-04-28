@@ -577,22 +577,29 @@
   }
 
   .editor-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    position: static;
+    gap: 0.35rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 0.7rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
   }
 
   .toolbar-group {
-    border-right: 0;
-    padding-right: 0;
+    flex: 0 0 auto;
   }
 
   .editor-actions {
+    flex-wrap: wrap;
     justify-content: stretch;
   }
 
   .editor-actions .button {
-    flex: 1;
+    flex: 1 1 12rem;
   }
 
   .link-modal-panel {
@@ -610,5 +617,42 @@
 
   .link-modal-actions .button {
     justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-editor {
+    padding: 1.25rem 1rem max(2.4rem, calc(2rem + var(--safe-area-bottom) * 0.35));
+  }
+
+  .title-input {
+    font-size: 1.45rem;
+  }
+
+  .description-input,
+  .tags-input,
+  .page-editor .editor-document {
+    font-size: 0.9rem;
+  }
+
+  .editor-toolbar {
+    margin-inline: -0.15rem;
+    padding-inline: 0.15rem;
+  }
+
+  .tool-button {
+    min-height: 1.8rem;
+    padding: 0.28rem 0.5rem;
+  }
+
+  .page-editor .editor-document {
+    padding-inline: 0.15rem;
+  }
+
+  .link-modal {
+    padding: max(0.75rem, calc(0.75rem + var(--safe-area-top) * 0.3))
+      max(0.75rem, calc(0.75rem + var(--safe-area-right) * 0.35))
+      max(0.75rem, calc(0.75rem + var(--safe-area-bottom) * 0.35))
+      max(0.75rem, calc(0.75rem + var(--safe-area-left) * 0.35));
   }
 }

@@ -1,14 +1,34 @@
 :host {
   display: block;
-  height: 100vh;
+  height: var(--app-height);
+  min-height: var(--app-height);
 }
 
 .app-shell {
   background: var(--color-surface-app);
   display: flex;
   font-family: var(--font-sans);
-  height: 100vh;
+  height: var(--app-height);
+  min-height: var(--app-height);
   overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.sidebar-frame {
+  flex: 0 0 var(--sidebar-width);
+  height: 100%;
+  min-width: var(--sidebar-width);
+  width: var(--sidebar-width);
+  z-index: 1;
+}
+
+.mobile-nav-backdrop {
+  background: rgba(15, 18, 19, 0.36);
+  border: 0;
+  inset: 0;
+  position: fixed;
+  z-index: 30;
 }
 
 .main {
@@ -16,14 +36,31 @@
   display: flex;
   flex: 1;
   flex-direction: column;
+  height: 100%;
   min-width: 0;
   overflow: hidden;
 }
 
 .content {
+  display: block;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+}
+
+.content > * {
+  min-width: 0;
+}
+
+.content.storage-content {
+  display: flex;
+  overflow: hidden;
+}
+
+.content.storage-content > * {
+  flex: 1 1 auto;
 }
 
 .app-alert {
@@ -74,12 +111,52 @@
 }
 
 @media (max-width: 860px) {
-  .app-shell {
-    flex-direction: column;
+  .sidebar-frame {
+    bottom: 0;
+    box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.22);
+    flex: 0 0 0;
+    left: 0;
+    min-width: 0;
+    position: fixed;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    width: min(20rem, calc(100vw - 2.5rem));
+    z-index: 35;
+  }
+
+  .sidebar-frame:not(.open) {
+    pointer-events: none;
+  }
+
+  .sidebar-frame.open {
+    transform: translateX(0);
+  }
+
+  .app-alert {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
   }
 
   .new-page-bar {
     align-items: stretch;
     flex-direction: column;
+    padding: 0.75rem 1rem;
+  }
+
+  .new-page-bar .button {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .new-page-bar {
+    padding-bottom: max(0.9rem, calc(0.75rem + var(--safe-area-bottom) * 0.35));
+  }
+
+  .new-page-input {
+    min-width: 0;
   }
 }

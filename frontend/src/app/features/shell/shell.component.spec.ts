@@ -1,12 +1,12 @@
 import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, ParamMap, Router, convertToParamMap } from '@angular/router';
-import { Observable, of } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import type { PageResponse } from '../../core/models/page.model';
 import type { SpaceWithPagesResponse } from '../../core/models/space.model';
 import { SettingsService } from '../../core/services/settings.service';
 import { KnowledgeBaseStore } from '../pages/services/knowledge-base.store';
-import { ShellComponent, SIDEBAR_CLOSED_SPACES_STORAGE_KEY } from './shell.component';
+import { COMPACT_SHELL_MEDIA_QUERY, ShellComponent, SIDEBAR_CLOSED_SPACES_STORAGE_KEY } from './shell.component';
 
 const page: PageResponse = {
   id: 'page-1',
@@ -85,9 +85,47 @@ class KnowledgeBaseStoreStub {
   }
 }
 
+class MatchMediaController {
+  private listeners = new Set<(event: MediaQueryListEvent) => void>();
+
+  constructor(private currentMatches = false) {}
+
+  readonly query = {
+    get matches() {
+      return controller.currentMatches;
+    },
+    media: COMPACT_SHELL_MEDIA_QUERY,
+    onchange: null,
+    addEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+      controller.listeners.add(asMediaQueryListener(listener));
+    },
+    removeEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+      controller.listeners.delete(asMediaQueryListener(listener));
+    },
+    addListener: (listener: (event: MediaQueryListEvent) => void) => {
+      controller.listeners.add(listener);
+    },
+    removeListener: (listener: (event: MediaQueryListEvent) => void) => {
+      controller.listeners.delete(listener);
+    },
+    dispatchEvent: () => true,
+  } as MediaQueryList;
+
+  setMatches(matches: boolean): void {
+    this.currentMatches = matches;
+    const event = { matches, media: COMPACT_SHELL_MEDIA_QUERY } as MediaQueryListEvent;
+    for (const listener of this.listeners) {
+      listener(event);
+    }
+  }
+}
+
+let controller: MatchMediaController;
+
 describe(ShellComponent.name, () => {
   let store: KnowledgeBaseStoreStub;
   let router: jasmine.SpyObj<Router>;
+  let paramMap$: Subject<ParamMap>;
   let activatedRoute: {
     paramMap: Observable<ParamMap>;
     snapshot: { routeConfig: { path: string } };
@@ -95,11 +133,19 @@ describe(ShellComponent.name, () => {
 
   beforeEach(async () => {
     window.localStorage.removeItem(SIDEBAR_CLOSED_SPACES_STORAGE_KEY);
+    controller = new MatchMediaController(false);
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: jasmine.createSpy('matchMedia').and.returnValue(controller.query),
+    });
+
     store = new KnowledgeBaseStoreStub();
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
     router.navigate.and.resolveTo(true);
+    paramMap$ = new Subject<ParamMap>();
     activatedRoute = {
-      paramMap: of(convertToParamMap({})),
+      paramMap: paramMap$.asObservable(),
       snapshot: { routeConfig: { path: '' } },
     };
 
@@ -112,7 +158,49 @@ describe(ShellComponent.name, () => {
         { provide: SettingsService, useValue: {} },
       ],
     });
-    TestBed.overrideComponent(ShellComponent, { set: { template: '' } });
+    TestBed.overrideComponent(ShellComponent, {
+      set: {
+        template: `
+          <bv-topbar
+            [compactLayout]="compactLayout()"
+            [mobileNavOpen]="mobileNavOpen()"
+            (toggleMobileNav)="toggleMobileNavigation()"
+          />
+
+          @if (compactLayout() && mobileNavOpen()) {
+            <button
+              type="button"
+              class="mobile-nav-backdrop"
+              aria-label="Navigation schliessen"
+              (click)="closeMobileNavigation()"
+            ></button>
+          }
+
+          <bv-sidebar
+            [spaces]="store.filteredSpaces()"
+            [loading]="store.loading()"
+            [saving]="store.saving()"
+            [dragDisabled]="editMode()"
+            [openSpaces]="openSpaces()"
+            [activePageId]="storageActive() ? null : store.activePageId()"
+            [activeSpaceId]="storageActive() ? null : activeSidebarSpaceId()"
+            [storageActive]="storageActive()"
+            [searchQuery]="store.searchQuery()"
+            [compactMode]="compactLayout()"
+            (toggleSpace)="toggleSpace($event)"
+            (selectSpace)="selectSpace($event)"
+            (selectPage)="selectPage($event)"
+            (selectStorage)="selectStorage()"
+            (searchQueryChange)="store.setSearchQuery($event)"
+            (createSpace)="createSpace($event)"
+            (deleteSpace)="requestDeleteSpace($event)"
+            (movePageToSpace)="movePageToSpace($event)"
+            (openSettings)="openSettings()"
+            (dismiss)="closeMobileNavigation()"
+          />
+        `,
+      },
+    });
     await TestBed.compileComponents();
   });
 
@@ -206,49 +294,145 @@ describe(ShellComponent.name, () => {
   it('activates storage mode from the storage route and hides page selection', () => {
     activatedRoute.snapshot.routeConfig.path = 'storage';
 
-    const fixture = createShell();
+    createShell();
 
-    expect(shell(fixture).storageActive()).toBe(true);
     expect(store.activePageId()).toBeNull();
     expect(store.activeSpaceId()).toBeNull();
     expect(store.loadSpaces).toHaveBeenCalledWith(null);
   });
 
-  it('navigates to storage from the sidebar action', () => {
+  it('opens the mobile drawer in compact layout and resets it when the viewport widens', () => {
     const fixture = createShell();
 
-    shell(fixture).selectStorage();
+    controller.setMatches(true);
+    fixture.detectChanges();
+    topbarMenuButton(fixture).click();
+    fixture.detectChanges();
 
-    expect(shell(fixture).storageActive()).toBe(true);
-    expect(store.activePageId()).toBeNull();
-    expect(store.activeSpaceId()).toBeNull();
+    expect(shell(fixture).compactLayout()).toBe(true);
+    expect(shell(fixture).mobileNavOpen()).toBe(true);
+
+    controller.setMatches(false);
+    fixture.detectChanges();
+
+    expect(shell(fixture).compactLayout()).toBe(false);
+    expect(shell(fixture).mobileNavOpen()).toBe(false);
+  });
+
+  it('closes the mobile drawer from the backdrop and escape key', () => {
+    controller.setMatches(true);
+    const fixture = createShell();
+
+    topbarMenuButton(fixture).click();
+    fixture.detectChanges();
+    backdrop(fixture).click();
+    fixture.detectChanges();
+
+    expect(shell(fixture).mobileNavOpen()).toBe(false);
+
+    topbarMenuButton(fixture).click();
+    fixture.detectChanges();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(shell(fixture).mobileNavOpen()).toBe(false);
+  });
+
+  it('closes the mobile drawer after sidebar navigation and settings actions', () => {
+    controller.setMatches(true);
+    store.spaces.set([createSpaceFixture({ pages: [page] })]);
+    const fixture = createShell();
+
+    topbarMenuButton(fixture).click();
+    fixture.detectChanges();
+    sidebarAvatar(fixture).click();
+    fixture.detectChanges();
+
+    expect(shell(fixture).settingsOpen()).toBe(true);
+    expect(shell(fixture).mobileNavOpen()).toBe(false);
+
+    topbarMenuButton(fixture).click();
+    fixture.detectChanges();
+    storageButton(fixture).click();
+    fixture.detectChanges();
+
+    expect(shell(fixture).mobileNavOpen()).toBe(false);
     expect(router.navigate).toHaveBeenCalledWith(['/storage']);
+
+    topbarMenuButton(fixture).click();
+    fixture.detectChanges();
+    pageButton(fixture).click();
+    fixture.detectChanges();
+
+    expect(shell(fixture).mobileNavOpen()).toBe(false);
+    expect(router.navigate).toHaveBeenCalledWith(['/pages', 'page-1']);
+  });
+
+  it('closes the mobile drawer when the current route changes', () => {
+    controller.setMatches(true);
+    const fixture = createShell();
+
+    topbarMenuButton(fixture).click();
+    fixture.detectChanges();
+    emitRoute({ pageId: 'page-1' }, fixture);
+
+    expect(shell(fixture).mobileNavOpen()).toBe(false);
   });
 
   function createShell(): ComponentFixture<ShellComponent> {
     const fixture = TestBed.createComponent(ShellComponent);
-    fixture.detectChanges();
+    emitRoute({}, fixture);
     return fixture;
   }
 
+  function emitRoute(
+    params: Record<string, string> = {},
+    fixture?: ComponentFixture<ShellComponent>,
+  ): void {
+    paramMap$.next(convertToParamMap(params));
+    fixture?.detectChanges();
+  }
+
   function shell(fixture: ComponentFixture<ShellComponent>): {
+    compactLayout: () => boolean;
+    mobileNavOpen: () => boolean;
     openSpaces: () => Partial<Record<string, boolean>>;
-    storageActive: () => boolean;
+    settingsOpen: () => boolean;
     toggleSpace: (spaceId: string) => void;
     selectPage: (pageId: string) => void;
-    selectStorage: () => void;
     requestDeleteSpace: (space: SpaceWithPagesResponse) => void;
     confirmDelete: () => void;
   } {
     return fixture.componentInstance as unknown as {
+      compactLayout: () => boolean;
+      mobileNavOpen: () => boolean;
       openSpaces: () => Partial<Record<string, boolean>>;
-      storageActive: () => boolean;
+      settingsOpen: () => boolean;
       toggleSpace: (spaceId: string) => void;
       selectPage: (pageId: string) => void;
-      selectStorage: () => void;
       requestDeleteSpace: (space: SpaceWithPagesResponse) => void;
       confirmDelete: () => void;
     };
+  }
+
+  function topbarMenuButton(fixture: ComponentFixture<ShellComponent>): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('.mobile-nav-button') as HTMLButtonElement;
+  }
+
+  function backdrop(fixture: ComponentFixture<ShellComponent>): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('.mobile-nav-backdrop') as HTMLButtonElement;
+  }
+
+  function storageButton(fixture: ComponentFixture<ShellComponent>): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('.storage-nav-button') as HTMLButtonElement;
+  }
+
+  function pageButton(fixture: ComponentFixture<ShellComponent>): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('.nav-item') as HTMLButtonElement;
+  }
+
+  function sidebarAvatar(fixture: ComponentFixture<ShellComponent>): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('.avatar') as HTMLButtonElement;
   }
 });
 
@@ -276,4 +460,12 @@ function findSpacePath(
     if (childPath) return childPath;
   }
   return null;
+}
+
+function asMediaQueryListener(listener: EventListenerOrEventListenerObject): (event: MediaQueryListEvent) => void {
+  if (typeof listener === 'function') {
+    return listener as (event: MediaQueryListEvent) => void;
+  }
+
+  return (event: MediaQueryListEvent) => listener.handleEvent(event);
 }

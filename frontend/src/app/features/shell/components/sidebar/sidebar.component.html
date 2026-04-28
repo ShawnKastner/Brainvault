@@ -1,11 +1,25 @@
-<aside class="sidebar">
+<aside class="sidebar" [class.compact]="compactMode()">
   <div class="brand">
-    <div class="brand-icon" aria-hidden="true">
-      <svg viewBox="0 0 16 16" fill="currentColor">
-        <path d="M2 2h5v5H2zm7 0h5v5H9zM2 9h5v5H2zm7 3a2 2 0 1 0 4 0 2 2 0 0 0-4 0z" />
-      </svg>
+    <div class="brand-copy">
+      <div class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2 2h5v5H2zm7 0h5v5H9zM2 9h5v5H2zm7 3a2 2 0 1 0 4 0 2 2 0 0 0-4 0z" />
+        </svg>
+      </div>
+      <span class="brand-name">BrainVault</span>
     </div>
-    <span class="brand-name">BrainVault</span>
+    @if (compactMode()) {
+      <button
+        type="button"
+        class="sidebar-close"
+        aria-label="Navigation schliessen"
+        (click)="dismiss.emit()"
+      >
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path d="M4 4l8 8M12 4l-8 8" />
+        </svg>
+      </button>
+    }
   </div>
 
   <label class="search" aria-label="Seiten suchen">
