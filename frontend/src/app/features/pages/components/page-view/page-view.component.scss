@@ -248,4 +248,35 @@
   .page-view {
     padding: 1.5rem 1.25rem 2.5rem;
   }
+
+  .page-title {
+    font-size: 1.7rem;
+  }
+
+  .page-body {
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-view {
+    padding: 1.25rem 1rem max(2.2rem, calc(2rem + var(--safe-area-bottom) * 0.35));
+  }
+
+  .page-meta {
+    gap: 0.45rem;
+  }
+
+  .page-reading-stats {
+    gap: 0.25rem;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .page-body pre,
+  .page-body .mermaid-diagram {
+    padding: 0.85rem;
+  }
 }

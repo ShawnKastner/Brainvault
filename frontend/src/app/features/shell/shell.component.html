@@ -1,24 +1,38 @@
-<div class="app-shell">
-  <bv-sidebar
-    [spaces]="store.filteredSpaces()"
-    [loading]="store.loading()"
-    [saving]="store.saving()"
-    [dragDisabled]="editMode()"
-    [openSpaces]="openSpaces()"
-    [activePageId]="storageActive() ? null : store.activePageId()"
-    [activeSpaceId]="storageActive() ? null : activeSidebarSpaceId()"
-    [storageActive]="storageActive()"
-    [searchQuery]="store.searchQuery()"
-    (toggleSpace)="toggleSpace($event)"
-    (selectSpace)="selectSpace($event)"
-    (selectPage)="selectPage($event)"
-    (selectStorage)="selectStorage()"
-    (searchQueryChange)="store.setSearchQuery($event)"
-    (createSpace)="createSpace($event)"
-    (deleteSpace)="requestDeleteSpace($event)"
-    (movePageToSpace)="movePageToSpace($event)"
-    (openSettings)="settingsOpen.set(true)"
-  />
+<div class="app-shell" [class.compact]="compactLayout()">
+  @if (compactLayout() && mobileNavOpen()) {
+    <button
+      type="button"
+      class="mobile-nav-backdrop"
+      aria-label="Navigation schliessen"
+      (click)="closeMobileNavigation()"
+    ></button>
+  }
+
+  <div class="sidebar-frame" [class.open]="!compactLayout() || mobileNavOpen()">
+    <bv-sidebar
+      id="app-sidebar"
+      [spaces]="store.filteredSpaces()"
+      [loading]="store.loading()"
+      [saving]="store.saving()"
+      [dragDisabled]="editMode()"
+      [openSpaces]="openSpaces()"
+      [activePageId]="storageActive() ? null : store.activePageId()"
+      [activeSpaceId]="storageActive() ? null : activeSidebarSpaceId()"
+      [storageActive]="storageActive()"
+      [searchQuery]="store.searchQuery()"
+      [compactMode]="compactLayout()"
+      (toggleSpace)="toggleSpace($event)"
+      (selectSpace)="selectSpace($event)"
+      (selectPage)="selectPage($event)"
+      (selectStorage)="selectStorage()"
+      (searchQueryChange)="store.setSearchQuery($event)"
+      (createSpace)="createSpace($event)"
+      (deleteSpace)="requestDeleteSpace($event)"
+      (movePageToSpace)="movePageToSpace($event)"
+      (openSettings)="openSettings()"
+      (dismiss)="closeMobileNavigation()"
+    />
+  </div>
 
   <main class="main">
     <bv-topbar
@@ -27,6 +41,9 @@
       [editMode]="editMode()"
       [saving]="store.saving()"
       [storageActive]="storageActive()"
+      [compactLayout]="compactLayout()"
+      [mobileNavOpen]="mobileNavOpen()"
+      (toggleMobileNav)="toggleMobileNavigation()"
       (showCreatePage)="showNewPage.set(!showNewPage())"
       (startEdit)="editMode.set(true)"
       (deletePage)="deleteActivePage()"
@@ -57,7 +74,7 @@
       </form>
     }
 
-    <section class="content">
+    <section class="content" [class.storage-content]="storageActive()">
       @if (storageActive()) {
         <bv-storage />
       } @else if (store.activePage(); as page) {

@@ -1,24 +1,41 @@
 <header class="topbar">
-  <nav class="breadcrumb" aria-label="Breadcrumb">
-    <span>BrainVault</span>
-    @if (storageActive()) {
-      <span class="sep">/</span>
-      <span class="current">Storage</span>
-    } @else {
-      @for (space of activeSpacePath(); track space.id; let last = $last) {
+  <div class="topbar-primary">
+    @if (compactLayout()) {
+      <button
+        type="button"
+        class="mobile-nav-button"
+        aria-controls="app-sidebar"
+        [attr.aria-expanded]="mobileNavOpen()"
+        [attr.aria-label]="mobileNavOpen() ? 'Navigation schliessen' : 'Navigation oeffnen'"
+        (click)="toggleMobileNav.emit()"
+      >
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M2.5 3.5h11M2.5 8h11M2.5 12.5h11" />
+        </svg>
+      </button>
+    }
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <span>BrainVault</span>
+      @if (storageActive()) {
         <span class="sep">/</span>
-        @if (activePage() || !last) {
-          <a class="breadcrumb-link" [routerLink]="['/spaces', space.id]">{{ space.name }}</a>
-        } @else {
-          <span class="current">{{ space.name }}</span>
+        <span class="current">Storage</span>
+      } @else {
+        @for (space of activeSpacePath(); track space.id; let last = $last) {
+          <span class="sep">/</span>
+          @if (activePage() || !last) {
+            <a class="breadcrumb-link" [routerLink]="['/spaces', space.id]">{{ space.name }}</a>
+          } @else {
+            <span class="current">{{ space.name }}</span>
+          }
+        }
+        @if (activePage(); as page) {
+          <span class="sep">/</span>
+          <span class="current">{{ page.title }}</span>
         }
       }
-      @if (activePage(); as page) {
-        <span class="sep">/</span>
-        <span class="current">{{ page.title }}</span>
-      }
-    }
-  </nav>
+    </nav>
+  </div>
 
   <div class="topbar-actions">
     @if (!storageActive()) {
