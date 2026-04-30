@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 @Component({
   selector: 'bv-loading-state',
   standalone: true,
-  template: '<p class="loading-state">Laedt...</p>',
+  template: '<p class="loading-state">Lädt...</p>',
   styles: [
     `
       .loading-state {

@@ -8,7 +8,7 @@
 
       <label class="upload-button" [class.disabled]="uploading()">
         <input type="file" accept="application/pdf" [disabled]="uploading()" (change)="uploadSelectedPdf($event)" />
-        <span>{{ uploading() ? 'Laedt...' : 'PDF hochladen' }}</span>
+        <span>{{ uploading() ? 'Lädt...' : 'PDF hochladen' }}</span>
       </label>
     </header>
 
@@ -34,7 +34,7 @@
 
     <div class="pdf-list" aria-label="PDF-Dateien">
       @if (loading()) {
-      <div class="storage-empty">Laedt...</div>
+      <div class="storage-empty">Lädt...</div>
       } @else {
       @for (pdf of filteredPdfs(); track pdf.id) {
       <div class="pdf-row" [class.active]="selectedPdfId() === pdf.id">
