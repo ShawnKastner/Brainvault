@@ -13,5 +13,5 @@ export const appConfig = registerAs('app', () => ({
   corsOrigins: parseCorsOrigins(process.env['CORS_ORIGINS']),
   uploadDir: process.env['UPLOAD_DIR'] ?? 'uploads',
   maxImageUploadBytes: Number(process.env['MAX_IMAGE_UPLOAD_BYTES'] ?? 5 * 1024 * 1024),
-  maxPdfUploadBytes: Number(process.env['MAX_PDF_UPLOAD_BYTES'] ?? 25 * 1024 * 1024),
+  maxPdfUploadBytes: Number(process.env['MAX_PDF_UPLOAD_BYTES'] ?? 5 * 1024 * 1024),
 }));
