@@ -334,6 +334,19 @@
   width: 100%;
 }
 
+.pdf-viewer-frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.pdf-viewer {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
 .preview-status {
   align-items: center;
   color: var(--color-text-muted);

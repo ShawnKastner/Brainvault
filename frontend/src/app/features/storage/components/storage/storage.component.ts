@@ -2,6 +2,7 @@ import { DatePipe, DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { NgxExtendedPdfViewerModule, ScrollModeType } from 'ngx-extended-pdf-viewer';
 import { finalize } from 'rxjs';
 import { StorageApiService } from '../../../../core/api/storage-api.service';
 import type { PdfAssetResponse } from '../../../../core/models/storage.model';
@@ -14,10 +15,12 @@ type PdfPreviewStatus =
   | { id: null; state: 'idle' }
   | { id: string; state: 'checking' | 'available' | 'missing' | 'error' };
 
+type PdfPreviewMode = 'desktop-native-preview' | 'mobile-embedded-preview';
+
 @Component({
   selector: 'bv-storage',
   standalone: true,
-  imports: [ConfirmModalComponent, DatePipe],
+  imports: [ConfirmModalComponent, DatePipe, NgxExtendedPdfViewerModule],
   templateUrl: './storage.component.html',
   styleUrl: './storage.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +40,7 @@ export class StorageComponent implements OnInit {
   protected readonly deleteCandidate = signal<PdfAssetResponse | null>(null);
   protected readonly storagePanelCollapsed = signal(false);
   protected readonly pdfPreviewStatus = signal<PdfPreviewStatus>({ id: null, state: 'idle' });
+  protected readonly pdfScrollMode = ScrollModeType;
 
   private pdfCheckRun = 0;
 
@@ -62,6 +66,25 @@ export class StorageComponent implements OnInit {
 
     return this.sanitizer.bypassSecurityTrustResourceUrl(this.storageApi.getPdfUrl(pdf.id));
   });
+
+  protected readonly selectedPdfViewerUrl = computed<string | null>(() => {
+    const pdf = this.selectedPdf();
+    const status = this.pdfPreviewStatus();
+    if (!pdf || status.id !== pdf.id || status.state !== 'available') return null;
+
+    return this.storageApi.getPdfUrl(pdf.id);
+  });
+
+  protected readonly pdfPreviewMode = computed<PdfPreviewMode>(() => {
+    const pdf = this.selectedPdf();
+    if (!pdf) return 'desktop-native-preview';
+
+    return this.shouldUseEmbeddedPdfViewer()
+      ? 'mobile-embedded-preview'
+      : 'desktop-native-preview';
+  });
+
+  protected readonly usesEmbeddedPdfViewer = computed(() => this.pdfPreviewMode() === 'mobile-embedded-preview');
 
   protected readonly pdfPreviewChecking = computed(() => {
     const pdf = this.selectedPdf();
@@ -249,6 +272,21 @@ export class StorageComponent implements OnInit {
 
   private isCompactStorageLayout(): boolean {
     return this.document.defaultView?.matchMedia(COMPACT_STORAGE_MEDIA_QUERY).matches ?? false;
+  }
+
+  private shouldUseEmbeddedPdfViewer(): boolean {
+    return this.isCompactStorageLayout() || this.isIOSLikeDevice();
+  }
+
+  private isIOSLikeDevice(): boolean {
+    const navigator = this.document.defaultView?.navigator;
+    if (!navigator) return false;
+
+    const userAgent = navigator.userAgent ?? '';
+    const platform = navigator.platform ?? '';
+    const maxTouchPoints = navigator.maxTouchPoints ?? 0;
+
+    return /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1);
   }
 }
 

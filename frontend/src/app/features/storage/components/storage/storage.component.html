@@ -95,6 +95,20 @@
       </svg>
       <p>{{ message }}</p>
     </div>
+    } @else if (usesEmbeddedPdfViewer()) {
+    @if (selectedPdfViewerUrl(); as url) {
+    <div class="pdf-viewer-frame">
+      <ngx-extended-pdf-viewer class="pdf-viewer" [src]="url" [height]="'100%'" [showToolbar]="true"
+        [pageViewMode]="'multiple'" [scrollMode]="pdfScrollMode.vertical" [textLayer]="true"
+        [showSidebarButton]="false" [showFindButton]="true" [showPagingButtons]="'always-visible'"
+        [showZoomButtons]="'always-visible'" [showZoomDropdown]="'always-visible'" [showOpenFileButton]="false"
+        [showPrintButton]="true" [showDownloadButton]="true" [showSecondaryToolbarButton]="'always-visible'"
+        [showEditorButtons]="false" [showTextEditor]="false" [showStampEditor]="false"
+        [showCommentEditor]="false" [showDrawEditor]="false" [showHighlightEditor]="false"
+        [showSignatureEditor]="false">
+      </ngx-extended-pdf-viewer>
+    </div>
+    }
     } @else if (selectedPdfUrl(); as url) {
     <iframe class="pdf-frame" [src]="url" [title]="pdf.originalName"></iframe>
     }

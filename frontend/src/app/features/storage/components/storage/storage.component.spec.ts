@@ -1,5 +1,7 @@
+import { Component, Input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 import { of, throwError } from 'rxjs';
 import { StorageApiService } from '../../../../core/api/storage-api.service';
 import type { PdfAssetResponse } from '../../../../core/models/storage.model';
@@ -28,9 +30,44 @@ const pdfs: PdfAssetResponse[] = [
   },
 ];
 
+@Component({
+  selector: 'ngx-extended-pdf-viewer',
+  standalone: true,
+  template: '',
+})
+class MockNgxExtendedPdfViewerComponent {
+  @Input() src: unknown;
+  @Input() height: unknown;
+  @Input() showToolbar: unknown;
+  @Input() pageViewMode: unknown;
+  @Input() scrollMode: unknown;
+  @Input() textLayer: unknown;
+  @Input() showSidebarButton: unknown;
+  @Input() showFindButton: unknown;
+  @Input() showPagingButtons: unknown;
+  @Input() showZoomButtons: unknown;
+  @Input() showZoomDropdown: unknown;
+  @Input() showOpenFileButton: unknown;
+  @Input() showPrintButton: unknown;
+  @Input() showDownloadButton: unknown;
+  @Input() showSecondaryToolbarButton: unknown;
+  @Input() showEditorButtons: unknown;
+  @Input() showTextEditor: unknown;
+  @Input() showStampEditor: unknown;
+  @Input() showCommentEditor: unknown;
+  @Input() showDrawEditor: unknown;
+  @Input() showHighlightEditor: unknown;
+  @Input() showSignatureEditor: unknown;
+}
+
 describe(StorageComponent.name, () => {
   let fixture: ComponentFixture<StorageComponent>;
   let storageApi: jasmine.SpyObj<StorageApiService>;
+  const defaultNavigator = {
+    maxTouchPoints: window.navigator.maxTouchPoints,
+    platform: window.navigator.platform,
+    userAgent: window.navigator.userAgent,
+  };
 
   beforeEach(async () => {
     storageApi = jasmine.createSpyObj<StorageApiService>('StorageApiService', [
@@ -48,10 +85,19 @@ describe(StorageComponent.name, () => {
     await TestBed.configureTestingModule({
       imports: [StorageComponent],
       providers: [{ provide: StorageApiService, useValue: storageApi }],
-    }).compileComponents();
+    })
+      .overrideComponent(StorageComponent, {
+        remove: { imports: [NgxExtendedPdfViewerModule] },
+        add: { imports: [MockNgxExtendedPdfViewerComponent] },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(StorageComponent);
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    setNavigator(defaultNavigator);
   });
 
   it('loads PDFs without selecting an entry for preview', () => {
@@ -79,6 +125,7 @@ describe(StorageComponent.name, () => {
 
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
     expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-2');
+    expect(fixture.nativeElement.querySelector('ngx-extended-pdf-viewer')).toBeNull();
   });
 
   it('toggles the storage file panel', () => {
@@ -111,8 +158,23 @@ describe(StorageComponent.name, () => {
 
     const view = fixture.nativeElement.querySelector('.storage-view') as HTMLElement;
     expect(view.classList).toContain('storage-panel-collapsed');
-    const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
-    expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-2');
+    expect(fixture.nativeElement.querySelector('iframe')).toBeNull();
+    expect(fixture.nativeElement.querySelector('ngx-extended-pdf-viewer')).not.toBeNull();
+  });
+
+  it('uses the embedded PDF viewer on iPadOS devices outside compact layout', () => {
+    setNavigator({
+      maxTouchPoints: 5,
+      platform: 'MacIntel',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15',
+    });
+
+    const row = fixture.debugElement.queryAll(By.css('.pdf-select'))[1].nativeElement as HTMLButtonElement;
+    row.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('iframe')).toBeNull();
+    expect(fixture.nativeElement.querySelector('ngx-extended-pdf-viewer')).not.toBeNull();
   });
 
   it('shows a preview error when the selected PDF file is missing', () => {
@@ -125,6 +187,7 @@ describe(StorageComponent.name, () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('iframe')).toBeNull();
+    expect(fixture.nativeElement.querySelector('ngx-extended-pdf-viewer')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain(
       'Die PDF ist in der Datenbank gelistet, fehlt aber im Upload-Speicher.',
     );
@@ -212,6 +275,27 @@ describe(StorageComponent.name, () => {
       configurable: true,
       writable: true,
       value: matcher,
+    });
+  }
+
+  function setNavigator(
+    value: {
+      maxTouchPoints: number;
+      platform: string;
+      userAgent: string;
+    },
+  ): void {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: value.userAgent,
+    });
+    Object.defineProperty(window.navigator, 'platform', {
+      configurable: true,
+      value: value.platform,
+    });
+    Object.defineProperty(window.navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: value.maxTouchPoints,
     });
   }
 });
