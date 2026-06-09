@@ -24,18 +24,18 @@ describe(StorageApiService.name, () => {
 
   afterEach(() => http.verify());
 
-  it('loads PDF assets', () => {
-    service.getPdfs().subscribe((pdfs) => {
+  it('loads storage files', () => {
+    service.getFiles().subscribe((pdfs) => {
       expect(pdfs.length).toBe(1);
       expect(pdfs[0].originalName).toBe('briefing.pdf');
     });
 
-    const request = http.expectOne('/api/assets/pdfs');
+    const request = http.expectOne('/api/assets/files');
     expect(request.request.method).toBe('GET');
     request.flush([
       {
         id: 'pdf-1',
-        url: '/api/assets/pdfs/pdf-1',
+        url: '/api/assets/files/pdf-1',
         filename: 'file.pdf',
         originalName: 'briefing.pdf',
         contentType: 'application/pdf',
@@ -46,18 +46,18 @@ describe(StorageApiService.name, () => {
     ]);
   });
 
-  it('uploads PDFs as multipart form data', () => {
+  it('uploads storage files as multipart form data', () => {
     const file = new File(['%PDF-1.7'], 'briefing.pdf', { type: 'application/pdf' });
 
-    service.uploadPdf(file).subscribe();
+    service.uploadFile(file).subscribe();
 
-    const request = http.expectOne('/api/assets/pdfs');
+    const request = http.expectOne('/api/assets/files');
     expect(request.request.method).toBe('POST');
     expect(request.request.body instanceof FormData).toBe(true);
     expect((request.request.body as FormData).get('file')).toBe(file);
     request.flush({
       id: 'pdf-1',
-      url: '/api/assets/pdfs/pdf-1',
+      url: '/api/assets/files/pdf-1',
       filename: 'file.pdf',
       originalName: 'briefing.pdf',
       contentType: 'application/pdf',
@@ -67,20 +67,20 @@ describe(StorageApiService.name, () => {
     });
   });
 
-  it('deletes PDFs and exposes the viewer URL', () => {
-    expect(service.getPdfUrl('pdf 1')).toBe('/api/assets/pdfs/pdf%201');
+  it('deletes files and exposes the file URL', () => {
+    expect(service.getFileUrl('pdf 1')).toBe('/api/assets/files/pdf%201');
 
-    service.deletePdf('pdf-1').subscribe();
+    service.deleteFile('pdf-1').subscribe();
 
-    const request = http.expectOne('/api/assets/pdfs/pdf-1');
+    const request = http.expectOne('/api/assets/files/pdf-1');
     expect(request.request.method).toBe('DELETE');
     request.flush(null);
   });
 
-  it('checks PDF availability with HEAD', () => {
-    service.checkPdf('pdf 1').subscribe();
+  it('checks file availability with HEAD', () => {
+    service.checkFile('pdf 1').subscribe();
 
-    const request = http.expectOne('/api/assets/pdfs/pdf%201');
+    const request = http.expectOne('/api/assets/files/pdf%201');
     expect(request.request.method).toBe('HEAD');
     request.flush(null);
   });

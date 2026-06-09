@@ -32,6 +32,44 @@ describe(AssetsController.name, () => {
     expect(service.saveImage).toHaveBeenCalledWith(file);
   });
 
+
+  it('delegates generic storage file operations to the service', async () => {
+    const stream = Readable.from(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+    const service = {
+      listFiles: jest.fn().mockResolvedValue([{ id: 'file-1' }]),
+      saveFile: jest.fn().mockResolvedValue({ id: 'file-1', url: '/api/assets/files/file-1' }),
+      openFile: jest.fn().mockResolvedValue({
+        stream,
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        filename: 'file.docx',
+        originalName: 'report.docx',
+        size: 4,
+      }),
+      ensureFileReadable: jest.fn().mockResolvedValue(undefined),
+      deleteFile: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AssetsService;
+    const controller = new AssetsController(service);
+    const file = {
+      originalname: 'report.docx',
+      mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 4,
+      buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+    };
+
+    await expect(controller.listFiles()).resolves.toEqual([{ id: 'file-1' }]);
+    await expect(controller.uploadFile(file)).resolves.toEqual({
+      id: 'file-1',
+      url: '/api/assets/files/file-1',
+    });
+    await expect(controller.checkFile('file-1')).resolves.toBeUndefined();
+    await expect(controller.getFile('file-1')).resolves.toBeDefined();
+    await expect(controller.deleteFile('file-1')).resolves.toBeUndefined();
+    expect(service.saveFile).toHaveBeenCalledWith(file);
+    expect(service.ensureFileReadable).toHaveBeenCalledWith('file-1');
+    expect(service.openFile).toHaveBeenCalledWith('file-1');
+    expect(service.deleteFile).toHaveBeenCalledWith('file-1');
+  });
+
   it('rejects PDF uploads without a file', async () => {
     const controller = new AssetsController({} as AssetsService);
 

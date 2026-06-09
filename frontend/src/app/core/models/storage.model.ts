@@ -1,4 +1,4 @@
-export interface PdfAssetResponse {
+export interface StorageFileResponse {
   id: string;
   url: string;
   filename: string;
@@ -8,3 +8,5 @@ export interface PdfAssetResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+export type PdfAssetResponse = StorageFileResponse;

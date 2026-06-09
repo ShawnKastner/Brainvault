@@ -2,33 +2,32 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api-url.token';
-import type { PdfAssetResponse } from '../models/storage.model';
+import type { StorageFileResponse } from '../models/storage.model';
 
 @Injectable({ providedIn: 'root' })
 export class StorageApiService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = inject(API_URL);
 
-  getPdfs(): Observable<PdfAssetResponse[]> {
-    return this.http.get<PdfAssetResponse[]>(`${this.apiUrl}/assets/pdfs`);
+  getFiles(): Observable<StorageFileResponse[]> {
+    return this.http.get<StorageFileResponse[]>(`${this.apiUrl}/assets/files`);
   }
 
-  uploadPdf(file: File): Observable<PdfAssetResponse> {
+  uploadFile(file: File): Observable<StorageFileResponse> {
     const formData = new FormData();
     formData.append('file', file);
-
-    return this.http.post<PdfAssetResponse>(`${this.apiUrl}/assets/pdfs`, formData);
+    return this.http.post<StorageFileResponse>(`${this.apiUrl}/assets/files`, formData);
   }
 
-  deletePdf(id: string): Observable<void> {
-    return this.http.delete<void>(this.getPdfUrl(id));
+  deleteFile(id: string): Observable<void> {
+    return this.http.delete<void>(this.getFileUrl(id));
   }
 
-  checkPdf(id: string): Observable<void> {
-    return this.http.head<void>(this.getPdfUrl(id));
+  checkFile(id: string): Observable<void> {
+    return this.http.head<void>(this.getFileUrl(id));
   }
 
-  getPdfUrl(id: string): string {
-    return `${this.apiUrl}/assets/pdfs/${encodeURIComponent(id)}`;
+  getFileUrl(id: string): string {
+    return `${this.apiUrl}/assets/files/${encodeURIComponent(id)}`;
   }
 }

@@ -23,7 +23,13 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AssetsService, UploadedImageFile, UploadedPdfFile } from './assets.service';
+import {
+  AssetsService,
+  UploadedImageFile,
+  UploadedPdfFile,
+  UploadedStorageFile,
+} from './assets.service';
+import { FileAssetResponseDto } from './dto/file-asset-response.dto';
 import { ImageUploadResponseDto } from './dto/image-upload-response.dto';
 import { PdfAssetResponseDto } from './dto/pdf-asset-response.dto';
 
@@ -64,6 +70,65 @@ export class AssetsController {
   async getImage(@Param('filename') filename: string): Promise<StreamableFile> {
     const image = await this.assetsService.openImage(filename);
     return new StreamableFile(image.stream, { type: image.contentType });
+  }
+
+  @Get('files')
+  @ApiOkResponse({ type: FileAssetResponseDto, isArray: true })
+  listFiles(): Promise<FileAssetResponseDto[]> {
+    return this.assetsService.listFiles();
+  }
+
+  @Post('files')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiCreatedResponse({ type: FileAssetResponseDto })
+  @ApiBadRequestResponse({ description: 'Ungültige oder fehlende Datei.' })
+  @UseInterceptors(FileInterceptor('file'))
+  uploadFile(@UploadedFile() file?: UploadedStorageFile): Promise<FileAssetResponseDto> {
+    if (!file) {
+      throw new BadRequestException('Es wurde keine Datei hochgeladen.');
+    }
+
+    return this.assetsService.saveFile(file);
+  }
+
+  @Head('files/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Datei ist vorhanden.' })
+  @ApiBadRequestResponse({ description: 'Ungültige Datei-ID.' })
+  @ApiNotFoundResponse({ description: 'Datei nicht gefunden.' })
+  async checkFile(@Param('id') id: string): Promise<void> {
+    await this.assetsService.ensureFileReadable(id);
+  }
+
+  @Get('files/:id')
+  @ApiOkResponse({ description: 'Gespeicherte Datei.' })
+  @ApiBadRequestResponse({ description: 'Ungültige Datei-ID.' })
+  @ApiNotFoundResponse({ description: 'Datei nicht gefunden.' })
+  async getFile(@Param('id') id: string): Promise<StreamableFile> {
+    const file = await this.assetsService.openFile(id);
+    return new StreamableFile(file.stream, {
+      type: file.contentType,
+      disposition: `${
+        file.contentType === 'application/pdf' ? 'inline' : 'attachment'
+      }; filename="${file.filename}"`,
+      length: file.size,
+    });
+  }
+
+  @Delete('files/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse({ description: 'Datei gelöscht.' })
+  @ApiBadRequestResponse({ description: 'Ungültige Datei-ID.' })
+  @ApiNotFoundResponse({ description: 'Datei nicht gefunden.' })
+  async deleteFile(@Param('id') id: string): Promise<void> {
+    await this.assetsService.deleteFile(id);
   }
 
   @Get('pdfs')

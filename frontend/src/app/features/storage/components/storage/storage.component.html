@@ -1,131 +1,62 @@
 <section class="storage-view" [class.storage-panel-collapsed]="storagePanelCollapsed()">
-  <aside class="storage-panel" id="storage-pdf-panel" aria-label="PDF Storage">
+  <aside class="storage-panel" id="storage-file-panel" aria-label="Dateispeicher">
     <header class="storage-header">
-      <div>
-        <p class="storage-eyebrow">{{ storageSummary() }}</p>
-        <h1>Storage</h1>
-      </div>
-
+      <div><p class="storage-eyebrow">{{ storageSummary() }}</p><h1>Storage</h1></div>
       <label class="upload-button" [class.disabled]="uploading()">
-        <input type="file" accept="application/pdf" [disabled]="uploading()" (change)="uploadSelectedPdf($event)" />
-        <span>{{ uploading() ? 'Lädt...' : 'PDF hochladen' }}</span>
+        <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" [disabled]="uploading()" (change)="uploadSelectedFile($event)" />
+        <span>{{ uploading() ? 'Lädt...' : 'Datei hochladen' }}</span>
       </label>
     </header>
-
-    <label class="storage-search" aria-label="PDFs suchen">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <circle cx="6.5" cy="6.5" r="4.5" />
-        <path d="M10.5 10.5L14 14" />
-      </svg>
-      <input type="search" placeholder="PDF suchen..." [value]="searchQuery()"
-        (input)="updateSearch($any($event.target).value)" />
+    <p class="storage-formats">PDF, Word, Excel und PowerPoint</p>
+    <label class="storage-search" aria-label="Dateien suchen">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
+      <input type="search" placeholder="Datei suchen..." [value]="searchQuery()" (input)="updateSearch($any($event.target).value)" />
     </label>
-
     @if (error(); as message) {
-    <div class="storage-alert" role="alert">
-      <span>{{ message }}</span>
-      <button type="button" aria-label="Meldung schliessen" (click)="dismissError()">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-          <path d="M4 4l8 8M12 4l-8 8" />
-        </svg>
-      </button>
-    </div>
+    <div class="storage-alert" role="alert"><span>{{ message }}</span><button type="button" aria-label="Meldung schliessen" (click)="dismissError()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button></div>
     }
-
-    <div class="pdf-list" aria-label="PDF-Dateien">
-      @if (loading()) {
-      <div class="storage-empty">Lädt...</div>
-      } @else {
-      @for (pdf of filteredPdfs(); track pdf.id) {
-      <div class="pdf-row" [class.active]="selectedPdfId() === pdf.id">
-        <button type="button" class="pdf-select" (click)="selectPdf(pdf)">
-          <span class="pdf-icon" aria-hidden="true">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="2" y="1" width="12" height="14" rx="2" />
-              <path d="M5 5h6M5 8h6M5 11h3" />
-            </svg>
-          </span>
-          <span class="pdf-copy">
-            <span class="pdf-title">{{ pdf.originalName }}</span>
-            <span class="pdf-meta">
-              {{ formatFileSize(pdf.size) }} · {{ pdf.createdAt | date: 'dd.MM.yyyy' }}
-            </span>
-          </span>
+    <div class="pdf-list" aria-label="Gespeicherte Dateien">
+      @if (loading()) { <div class="storage-empty">Lädt...</div> } @else {
+      @for (file of filteredFiles(); track file.id) {
+      <div class="pdf-row" [class.active]="selectedFileId() === file.id">
+        <button type="button" class="pdf-select" (click)="selectFile(file)">
+          <span [class]="'file-type-icon ' + getFileTypeClass(file)" aria-hidden="true">{{ getFileTypeLabel(file).slice(0, 1) }}</span>
+          <span class="pdf-copy"><span class="pdf-title">{{ file.originalName }}</span><span class="pdf-meta">{{ getFileTypeLabel(file) }} · {{ formatFileSize(file.size) }} · {{ file.createdAt | date: 'dd.MM.yyyy' }}</span></span>
         </button>
-        <button type="button" class="pdf-delete" [disabled]="deleting()"
-          [attr.aria-label]="pdf.originalName + ' löschen'" (click)="requestDelete(pdf, $event)">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M6.4 2.4h3.2l.6 1.2H14M2 3.6h12M4 5.8l.5 7.2h7l.5-7.2" />
-            <path d="M6.5 7.2v3.9M9.5 7.2v3.9" />
-          </svg>
-        </button>
+        <button type="button" class="pdf-delete" [disabled]="deleting()" [attr.aria-label]="file.originalName + ' löschen'" (click)="requestDelete(file, $event)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6.4 2.4h3.2l.6 1.2H14M2 3.6h12M4 5.8l.5 7.2h7l.5-7.2" /><path d="M6.5 7.2v3.9M9.5 7.2v3.9" /></svg></button>
       </div>
-      } @empty {
-      <div class="storage-empty">Keine PDFs gefunden.</div>
-      }
+      } @empty { <div class="storage-empty">Keine Dateien gefunden.</div> }
       }
     </div>
   </aside>
 
   <main class="storage-preview">
-    @if (selectedPdf(); as pdf) {
+    @if (selectedFile(); as file) {
     <header class="preview-header">
-      <button type="button" class="storage-panel-toggle" [attr.aria-controls]="'storage-pdf-panel'"
-        [attr.aria-expanded]="!storagePanelCollapsed()" (click)="toggleStoragePanel()">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-          <path d="M2.5 3.5h11M2.5 8h11M2.5 12.5h11" />
-        </svg>
-        <span>{{ storagePanelCollapsed() ? 'Dateien' : 'Liste ausblenden' }}</span>
-      </button>
-      <div>
-        <p>{{ formatFileSize(pdf.size) }}</p>
-        <h2>{{ pdf.originalName }}</h2>
-      </div>
+      <button type="button" class="storage-panel-toggle" [attr.aria-controls]="'storage-file-panel'" [attr.aria-expanded]="!storagePanelCollapsed()" (click)="toggleStoragePanel()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.5 3.5h11M2.5 8h11M2.5 12.5h11" /></svg><span>{{ storagePanelCollapsed() ? 'Dateien' : 'Liste ausblenden' }}</span></button>
+      <div><p>{{ getFileTypeLabel(file) }} · {{ formatFileSize(file.size) }}</p><h2>{{ file.originalName }}</h2></div>
     </header>
-
-    @if (pdfPreviewChecking()) {
-    <div class="preview-status">
-      <p>PDF wird geprüft...</p>
-    </div>
-    } @else if (pdfPreviewError(); as message) {
-    <div class="preview-status preview-error" role="alert">
-      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
-        <path d="M24 6 44 40H4L24 6Z" />
-        <path d="M24 17v11M24 34h.01" />
-      </svg>
-      <p>{{ message }}</p>
+    @if (previewChecking()) {
+    <div class="preview-status"><p>Datei wird geprüft...</p></div>
+    } @else if (previewError(); as message) {
+    <div class="preview-status preview-error" role="alert"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M24 6 44 40H4L24 6Z" /><path d="M24 17v11M24 34h.01" /></svg><p>{{ message }}</p></div>
+    } @else if (!selectedFileIsPdf()) {
+    <div class="preview-status office-preview">
+      <span [class]="'file-type-icon large ' + getFileTypeClass(file)" aria-hidden="true">{{ getFileTypeLabel(file).slice(0, 1) }}</span>
+      <h3>{{ getFileTypeLabel(file) }}-Datei</h3>
+      <p>Für dieses Format ist keine Vorschau verfügbar. Die Datei kann heruntergeladen und in der passenden Office-Anwendung geöffnet werden.</p>
+      <a class="button" [href]="storageApi.getFileUrl(file.id)" download>Herunterladen</a>
     </div>
     } @else if (usesEmbeddedPdfViewer()) {
-    @if (selectedPdfViewerUrl(); as url) {
-    <div class="pdf-viewer-frame">
-      <ngx-extended-pdf-viewer class="pdf-viewer" [src]="url" [height]="'100%'" [showToolbar]="true"
-        [pageViewMode]="'multiple'" [scrollMode]="pdfScrollMode.vertical" [textLayer]="true"
-        [showSidebarButton]="false" [showFindButton]="true" [showPagingButtons]="'always-visible'"
-        [showZoomButtons]="'always-visible'" [showZoomDropdown]="'always-visible'" [showOpenFileButton]="false"
-        [showPrintButton]="true" [showDownloadButton]="true" [showSecondaryToolbarButton]="'always-visible'"
-        [showEditorButtons]="false" [showTextEditor]="false" [showStampEditor]="false"
-        [showCommentEditor]="false" [showDrawEditor]="false" [showHighlightEditor]="false"
-        [showSignatureEditor]="false">
-      </ngx-extended-pdf-viewer>
-    </div>
-    }
-    } @else if (selectedPdfUrl(); as url) {
-    <iframe class="pdf-frame" [src]="url" [title]="pdf.originalName"></iframe>
-    }
+      @if (selectedFileViewerUrl(); as url) {
+      <div class="pdf-viewer-frame"><ngx-extended-pdf-viewer class="pdf-viewer" [src]="url" [height]="'100%'" [showToolbar]="true" [pageViewMode]="'multiple'" [scrollMode]="pdfScrollMode.vertical" [textLayer]="true" [showSidebarButton]="false" [showFindButton]="true" [showPagingButtons]="'always-visible'" [showZoomButtons]="'always-visible'" [showZoomDropdown]="'always-visible'" [showOpenFileButton]="false" [showPrintButton]="true" [showDownloadButton]="true" [showSecondaryToolbarButton]="'always-visible'" [showEditorButtons]="false" [showTextEditor]="false" [showStampEditor]="false" [showCommentEditor]="false" [showDrawEditor]="false" [showHighlightEditor]="false" [showSignatureEditor]="false"></ngx-extended-pdf-viewer></div>
+      }
+    } @else if (selectedFileUrl(); as url) { <iframe class="pdf-frame" [src]="url" [title]="file.originalName"></iframe> }
     } @else {
-    <div class="preview-empty">
-      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
-        <rect x="8" y="4" width="32" height="40" rx="3" />
-        <path d="M16 16h16M16 22h16M16 28h10" />
-      </svg>
-      <p>Keine Datei ausgewählt</p>
-    </div>
+    <div class="preview-empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="8" y="4" width="32" height="40" rx="3" /><path d="M16 16h16M16 22h16M16 28h10" /></svg><p>Keine Datei ausgewählt</p></div>
     }
   </main>
 </section>
-@if(deleteCandidate() !==null) {
-<bv-confirm-modal [open]="deleteCandidate() !== null" [title]="'PDF löschen?'"
-  [message]="deleteCandidate()?.originalName ?? ''" [confirmLabel]="'PDF löschen'" [cancelLabel]="'Abbrechen'"
-  [pendingLabel]="'Löscht...'" [pending]="deleting()" [danger]="true" (cancel)="cancelDelete()"
-  (confirm)="confirmDelete()" />
+@if(deleteCandidate() !== null) {
+<bv-confirm-modal [open]="deleteCandidate() !== null" [title]="'Datei löschen?'" [message]="deleteCandidate()?.originalName ?? ''" [confirmLabel]="'Datei löschen'" [cancelLabel]="'Abbrechen'" [pendingLabel]="'Löscht...'" [pending]="deleting()" [danger]="true" (cancel)="cancelDelete()" (confirm)="confirmDelete()" />
 }

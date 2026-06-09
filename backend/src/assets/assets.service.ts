@@ -7,7 +7,8 @@ import { constants } from 'fs';
 import { basename, extname, join, resolve } from 'path';
 import { randomUUID } from 'crypto';
 import type { Readable } from 'stream';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import { FileAssetResponseDto } from './dto/file-asset-response.dto';
 import { ImageUploadResponseDto } from './dto/image-upload-response.dto';
 import { PdfAssetResponseDto } from './dto/pdf-asset-response.dto';
 import { Asset } from './entities/asset.entity';
@@ -19,6 +20,7 @@ export interface UploadedImageFile {
   buffer?: Buffer;
 }
 
+export type UploadedStorageFile = UploadedImageFile;
 export type UploadedPdfFile = UploadedImageFile;
 
 export interface StoredImage {
@@ -26,7 +28,7 @@ export interface StoredImage {
   contentType: string;
 }
 
-export interface StoredPdf {
+export interface StoredFile {
   stream: Readable;
   contentType: string;
   filename: string;
@@ -50,9 +52,24 @@ const IMAGE_EXTENSIONS = new Map<string, string>([
 ]);
 
 const STORED_IMAGE_PATTERN = /^[a-f0-9-]{36}\.(?:png|jpe?g|webp|gif)$/i;
-const STORED_PDF_PATTERN = /^[a-f0-9-]{36}\.pdf$/i;
+const STORED_FILE_PATTERN = /^[a-f0-9-]{36}\.(?:pdf|docx?|xlsx?|pptx?)$/i;
 const PDF_CONTENT_TYPE = 'application/pdf';
 const PDF_SIGNATURE = Buffer.from('%PDF-');
+const ZIP_SIGNATURES = [
+  Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+  Buffer.from([0x50, 0x4b, 0x05, 0x06]),
+  Buffer.from([0x50, 0x4b, 0x07, 0x08]),
+];
+const OLE_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+const FILE_TYPES = new Map<string, { extension: string; contentTypes: string[]; signature: 'pdf' | 'zip' | 'ole' }>([
+  ['.pdf', { extension: '.pdf', contentTypes: [PDF_CONTENT_TYPE], signature: 'pdf' }],
+  ['.doc', { extension: '.doc', contentTypes: ['application/msword'], signature: 'ole' }],
+  ['.docx', { extension: '.docx', contentTypes: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'], signature: 'zip' }],
+  ['.xls', { extension: '.xls', contentTypes: ['application/vnd.ms-excel'], signature: 'ole' }],
+  ['.xlsx', { extension: '.xlsx', contentTypes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], signature: 'zip' }],
+  ['.ppt', { extension: '.ppt', contentTypes: ['application/vnd.ms-powerpoint'], signature: 'ole' }],
+  ['.pptx', { extension: '.pptx', contentTypes: ['application/vnd.openxmlformats-officedocument.presentationml.presentation'], signature: 'zip' }],
+]);
 const UTF8_MOJIBAKE_MARKERS = /[ÃÂâÐÑÌ]/;
 
 @Injectable()
@@ -101,54 +118,56 @@ export class AssetsService {
     };
   }
 
-  async listPdfs(): Promise<PdfAssetResponseDto[]> {
+  async listFiles(): Promise<FileAssetResponseDto[]> {
     const assets = await this.assetsRepo.find({
-      where: { type: 'pdf' },
+      where: { type: In(['file', 'pdf']) },
       order: { createdAt: 'DESC' },
     });
 
-    return assets.map(toPdfResponse);
+    return assets.map(toFileResponse);
   }
 
-  async savePdf(file: UploadedPdfFile): Promise<PdfAssetResponseDto> {
-    if (file.mimetype !== PDF_CONTENT_TYPE) {
-      throw new BadRequestException('Nur PDF-Dateien sind erlaubt.');
+  async saveFile(file: UploadedStorageFile): Promise<FileAssetResponseDto> {
+    const extension = extname(file.originalname).toLowerCase();
+    const fileType = FILE_TYPES.get(extension);
+    if (!fileType || ![...fileType.contentTypes, 'application/octet-stream', ''].includes(file.mimetype)) {
+      throw new BadRequestException('Nur PDF-, Word-, Excel- und PowerPoint-Dateien sind erlaubt.');
     }
 
     if (file.size > this.maxPdfUploadBytes()) {
-      throw new BadRequestException('Die PDF-Datei ist zu gross.');
+      throw new BadRequestException('Die Datei ist zu gross.');
     }
 
     if (!file.buffer || file.buffer.length === 0) {
-      throw new BadRequestException('Die PDF-Datei ist leer oder konnte nicht gelesen werden.');
+      throw new BadRequestException('Die Datei ist leer oder konnte nicht gelesen werden.');
     }
 
-    if (!file.buffer.subarray(0, PDF_SIGNATURE.length).equals(PDF_SIGNATURE)) {
-      throw new BadRequestException('Die Datei ist keine gültige PDF-Datei.');
+    if (!hasExpectedSignature(file.buffer, fileType.signature)) {
+      throw new BadRequestException('Der Dateiinhalt entspricht nicht dem angegebenen Dateiformat.');
     }
 
-    const filename = `${randomUUID()}.pdf`;
+    const filename = `${randomUUID()}${fileType.extension}`;
     const originalName = normalizeAssetOriginalName(file.originalname);
-    const pdfsDir = await this.ensurePdfsDir();
-    await writeFile(join(pdfsDir, filename), file.buffer);
+    const filesDir = await this.ensureFilesDir();
+    await writeFile(join(filesDir, filename), file.buffer);
     const asset = await this.assetsRepo.save(
       this.assetsRepo.create({
-        type: 'pdf',
+        type: 'file',
         filename,
         originalName,
-        contentType: PDF_CONTENT_TYPE,
+        contentType: fileType.contentTypes[0],
         size: file.size,
       }),
     );
 
-    return toPdfResponse(asset);
+    return toFileResponse(asset);
   }
 
-  async openPdf(id: string): Promise<StoredPdf> {
-    const { asset, pdfPath } = await this.findReadablePdf(id);
+  async openFile(id: string): Promise<StoredFile> {
+    const { asset, filePath } = await this.findReadableFile(id);
 
     return {
-      stream: createReadStream(pdfPath),
+      stream: createReadStream(filePath),
       contentType: asset.contentType,
       filename: asset.filename,
       originalName: normalizeAssetOriginalName(asset.originalName),
@@ -156,33 +175,59 @@ export class AssetsService {
     };
   }
 
-  async ensurePdfReadable(id: string): Promise<void> {
-    await this.findReadablePdf(id);
+  async ensureFileReadable(id: string): Promise<void> {
+    await this.findReadableFile(id);
   }
 
-  async deletePdf(id: string): Promise<void> {
+  async deleteFile(id: string): Promise<void> {
     if (!isUuid(id)) {
-      throw new BadRequestException('Ungültige PDF-ID.');
+      throw new BadRequestException('Ungültige Datei-ID.');
     }
 
-    const asset = await this.assetsRepo.findOne({ where: { id, type: 'pdf' } });
+    const asset = await this.assetsRepo.findOne({ where: { id, type: In(['file', 'pdf']) } });
     if (!asset) {
-      throw new NotFoundException('PDF nicht gefunden.');
+      throw new NotFoundException('Datei nicht gefunden.');
     }
 
-    if (!isStoredPdfFilename(asset.filename)) {
-      throw new BadRequestException('Ungültiger PDF-Name.');
+    if (!isStoredFileFilename(asset.filename)) {
+      throw new BadRequestException('Ungültiger Dateiname.');
     }
 
-    const pdfPath = this.resolvePdfPath(asset.filename);
-
+    const filePath = this.resolveFilePath(asset);
     try {
-      await unlink(pdfPath);
+      await unlink(filePath);
     } catch (error) {
       if (!isFileMissingError(error)) throw error;
     }
 
-    await this.assetsRepo.delete({ id, type: 'pdf' });
+    await this.assetsRepo.delete({ id });
+  }
+
+  // Compatibility methods for existing clients using the PDF-only API.
+  async listPdfs(): Promise<PdfAssetResponseDto[]> {
+    return (await this.listFiles())
+      .filter((file) => file.contentType === PDF_CONTENT_TYPE)
+      .map((file) => ({ ...file, url: `/api/assets/pdfs/${file.id}` }));
+  }
+
+  async savePdf(file: UploadedPdfFile): Promise<PdfAssetResponseDto> {
+    if (file.mimetype !== PDF_CONTENT_TYPE || extname(file.originalname).toLowerCase() !== '.pdf') {
+      throw new BadRequestException('Nur PDF-Dateien sind erlaubt.');
+    }
+    const response = await this.saveFile(file);
+    return { ...response, url: `/api/assets/pdfs/${response.id}` };
+  }
+
+  async openPdf(id: string): Promise<StoredFile> {
+    return this.openFile(id);
+  }
+
+  async ensurePdfReadable(id: string): Promise<void> {
+    await this.ensureFileReadable(id);
+  }
+
+  async deletePdf(id: string): Promise<void> {
+    await this.deleteFile(id);
   }
 
   async openImage(filename: string): Promise<StoredImage> {
@@ -246,52 +291,55 @@ export class AssetsService {
     return imagesDir;
   }
 
-  private async ensurePdfsDir(): Promise<string> {
-    const pdfsDir = this.pdfsDir();
-    await mkdir(pdfsDir, { recursive: true });
-    return pdfsDir;
+  private async ensureFilesDir(): Promise<string> {
+    const filesDir = this.filesDir();
+    await mkdir(filesDir, { recursive: true });
+    return filesDir;
   }
 
   private imagesDir(): string {
     return resolve(this.config.get<string>('app.uploadDir', 'uploads'), 'images');
   }
 
+  private filesDir(): string {
+    return resolve(this.config.get<string>('app.uploadDir', 'uploads'), 'files');
+  }
+
   private pdfsDir(): string {
     return resolve(this.config.get<string>('app.uploadDir', 'uploads'), 'pdfs');
   }
 
-  private resolvePdfPath(filename: string): string {
-    const pdfsDir = this.pdfsDir();
-    const pdfPath = resolve(pdfsDir, filename);
-    if (!pdfPath.startsWith(`${pdfsDir}/`) || basename(pdfPath) !== filename) {
-      throw new BadRequestException('Ungültiger PDF-Name.');
+  private resolveFilePath(asset: Asset): string {
+    const directory = asset.type === 'pdf' ? this.pdfsDir() : this.filesDir();
+    const filePath = resolve(directory, asset.filename);
+    if (!filePath.startsWith(`${directory}/`) || basename(filePath) !== asset.filename) {
+      throw new BadRequestException('Ungültiger Dateiname.');
     }
-    return pdfPath;
+    return filePath;
   }
 
-  private async findReadablePdf(id: string): Promise<{ asset: Asset; pdfPath: string }> {
+  private async findReadableFile(id: string): Promise<{ asset: Asset; filePath: string }> {
     if (!isUuid(id)) {
-      throw new BadRequestException('Ungültige PDF-ID.');
+      throw new BadRequestException('Ungültige Datei-ID.');
     }
 
-    const asset = await this.assetsRepo.findOne({ where: { id, type: 'pdf' } });
+    const asset = await this.assetsRepo.findOne({ where: { id, type: In(['file', 'pdf']) } });
     if (!asset) {
-      throw new NotFoundException('PDF nicht gefunden.');
+      throw new NotFoundException('Datei nicht gefunden.');
     }
 
-    if (!isStoredPdfFilename(asset.filename)) {
-      throw new BadRequestException('Ungültiger PDF-Name.');
+    if (!isStoredFileFilename(asset.filename)) {
+      throw new BadRequestException('Ungültiger Dateiname.');
     }
 
-    const pdfPath = this.resolvePdfPath(asset.filename);
-
+    const filePath = this.resolveFilePath(asset);
     try {
-      await access(pdfPath, constants.R_OK);
+      await access(filePath, constants.R_OK);
     } catch {
-      throw new NotFoundException('PDF nicht gefunden.');
+      throw new NotFoundException('Datei nicht gefunden.');
     }
 
-    return { asset, pdfPath };
+    return { asset, filePath };
   }
 
   private maxImageUploadBytes(): number {
@@ -307,8 +355,12 @@ export function isStoredImageFilename(filename: string): boolean {
   return STORED_IMAGE_PATTERN.test(filename);
 }
 
+export function isStoredFileFilename(filename: string): boolean {
+  return STORED_FILE_PATTERN.test(filename);
+}
+
 export function isStoredPdfFilename(filename: string): boolean {
-  return STORED_PDF_PATTERN.test(filename);
+  return isStoredFileFilename(filename) && extname(filename).toLowerCase() === '.pdf';
 }
 
 export function normalizeAssetOriginalName(originalName: string): string {
@@ -338,6 +390,27 @@ function isUuid(value: string): boolean {
   return /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
     value,
   );
+}
+
+function hasExpectedSignature(buffer: Buffer, signature: 'pdf' | 'zip' | 'ole'): boolean {
+  if (signature === 'pdf') return buffer.subarray(0, PDF_SIGNATURE.length).equals(PDF_SIGNATURE);
+  if (signature === 'ole') return buffer.subarray(0, OLE_SIGNATURE.length).equals(OLE_SIGNATURE);
+  return ZIP_SIGNATURES.some((zipSignature) =>
+    buffer.subarray(0, zipSignature.length).equals(zipSignature),
+  );
+}
+
+function toFileResponse(asset: Asset): FileAssetResponseDto {
+  return {
+    id: asset.id,
+    url: `/api/assets/files/${asset.id}`,
+    filename: asset.filename,
+    originalName: normalizeAssetOriginalName(asset.originalName),
+    contentType: asset.contentType,
+    size: asset.size,
+    createdAt: asset.createdAt.toISOString(),
+    updatedAt: asset.updatedAt.toISOString(),
+  };
 }
 
 function toPdfResponse(asset: Asset): PdfAssetResponseDto {

@@ -466,3 +466,12 @@
     width: 100%;
   }
 }
+
+.storage-formats { color: var(--color-text-muted); font-size: 0.7rem; margin: -0.35rem 1rem 0.65rem; }
+.file-type-icon { align-items: center; background: #dc2626; border-radius: 0.25rem; color: #fff; display: inline-flex; flex: 0 0 auto; font-size: 0.65rem; font-weight: 800; height: 1.5rem; justify-content: center; width: 1.5rem; }
+.file-type-icon.word { background: #2563eb; }
+.file-type-icon.excel { background: #15803d; }
+.file-type-icon.powerpoint { background: #c2410c; }
+.file-type-icon.large { border-radius: 0.65rem; font-size: 1.5rem; height: 4rem; width: 4rem; }
+.office-preview h3 { color: var(--color-text); margin: 0; }
+.office-preview .button { margin-top: 0.5rem; text-decoration: none; }

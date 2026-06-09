@@ -186,16 +186,43 @@ describe(AssetsService.name, () => {
     expect(response.createdAt).toBe(createdAt.toISOString());
     expect(assetsRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'pdf',
+        type: 'file',
         originalName: unicodePdfName,
         contentType: 'application/pdf',
         size: 12,
       }),
     );
-    await expect(readFile(join(uploadDir, 'pdfs', response.filename))).resolves.toEqual(
+    await expect(readFile(join(uploadDir, 'files', response.filename))).resolves.toEqual(
       Buffer.from('%PDF-1.7\nbody'),
     );
     expect(response.originalName).toBe(unicodePdfName);
+  });
+
+  it.each([
+    ['report.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    ['budget.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    ['slides.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  ])('stores supported Office file %s', async (originalname, mimetype) => {
+    const response = await service.saveFile({
+      originalname,
+      mimetype,
+      size: 8,
+      buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]),
+    });
+
+    expect(response.originalName).toBe(originalname);
+    expect(response.url).toBe(`/api/assets/files/${response.id}`);
+    expect(response.filename).toMatch(new RegExp(`\.${originalname.split('.').pop()}$`));
+    await expect(readFile(join(uploadDir, 'files', response.filename))).resolves.toBeDefined();
+  });
+
+  it('rejects Office files whose content does not match their format', async () => {
+    await expect(service.saveFile({
+      originalname: 'fake.docx',
+      mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 5,
+      buffer: Buffer.from('hello'),
+    })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects invalid PDF uploads', async () => {
@@ -249,7 +276,7 @@ describe(AssetsService.name, () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('lists only PDF assets newest first', async () => {
+  it('lists storage files newest first', async () => {
     const mojibakeName = Buffer.from(unicodePdfName.normalize('NFD'), 'utf8').toString('latin1');
     assetsRepo.find.mockResolvedValue([
       createAsset({
@@ -274,10 +301,9 @@ describe(AssetsService.name, () => {
         updatedAt: updatedAt.toISOString(),
       },
     ]);
-    expect(assetsRepo.find).toHaveBeenCalledWith({
-      where: { type: 'pdf' },
-      order: { createdAt: 'DESC' },
-    });
+    expect(assetsRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ order: { createdAt: 'DESC' } }),
+    );
   });
 
   it('opens stored PDFs with their content type and size', async () => {
@@ -300,7 +326,9 @@ describe(AssetsService.name, () => {
     expect(pdf.originalName).toBe('briefing.pdf');
     expect(pdf.size).toBe(12);
     expect(pdf.stream).toBeDefined();
-    expect(assetsRepo.findOne).toHaveBeenCalledWith({ where: { id: pdfId, type: 'pdf' } });
+    expect(assetsRepo.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: pdfId }) }),
+    );
   });
 
   it('checks readable PDFs without returning a stream', async () => {
@@ -317,7 +345,9 @@ describe(AssetsService.name, () => {
     await writeFile(join(uploadDir, 'pdfs', filename), Buffer.from('%PDF-1.7\nbody'));
 
     await expect(service.ensurePdfReadable(pdfId)).resolves.toBeUndefined();
-    expect(assetsRepo.findOne).toHaveBeenCalledWith({ where: { id: pdfId, type: 'pdf' } });
+    expect(assetsRepo.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: pdfId }) }),
+    );
   });
 
   it('rejects invalid and missing PDFs', async () => {
@@ -352,6 +382,6 @@ describe(AssetsService.name, () => {
     await expect(readFile(join(uploadDir, 'pdfs', filename))).rejects.toMatchObject({
       code: 'ENOENT',
     });
-    expect(assetsRepo.delete).toHaveBeenCalledWith({ id: pdfId, type: 'pdf' });
+    expect(assetsRepo.delete).toHaveBeenCalledWith({ id: pdfId });
   });
 });

@@ -10,7 +10,7 @@ import { StorageComponent } from './storage.component';
 const pdfs: PdfAssetResponse[] = [
   {
     id: 'pdf-1',
-    url: '/api/assets/pdfs/pdf-1',
+    url: '/api/assets/files/pdf-1',
     filename: 'stored-1.pdf',
     originalName: 'briefing.pdf',
     contentType: 'application/pdf',
@@ -20,7 +20,7 @@ const pdfs: PdfAssetResponse[] = [
   },
   {
     id: 'pdf-2',
-    url: '/api/assets/pdfs/pdf-2',
+    url: '/api/assets/files/pdf-2',
     filename: 'stored-2.pdf',
     originalName: 'roadmap.pdf',
     contentType: 'application/pdf',
@@ -71,15 +71,15 @@ describe(StorageComponent.name, () => {
 
   beforeEach(async () => {
     storageApi = jasmine.createSpyObj<StorageApiService>('StorageApiService', [
-      'getPdfs',
-      'uploadPdf',
-      'deletePdf',
-      'checkPdf',
-      'getPdfUrl',
+      'getFiles',
+      'uploadFile',
+      'deleteFile',
+      'checkFile',
+      'getFileUrl',
     ]);
-    storageApi.getPdfs.and.returnValue(of(pdfs));
-    storageApi.checkPdf.and.returnValue(of(undefined));
-    storageApi.getPdfUrl.and.callFake((id) => `/api/assets/pdfs/${id}`);
+    storageApi.getFiles.and.returnValue(of(pdfs));
+    storageApi.checkFile.and.returnValue(of(undefined));
+    storageApi.getFileUrl.and.callFake((id) => `/api/assets/files/${id}`);
     setCompactLayout(false);
 
     await TestBed.configureTestingModule({
@@ -101,7 +101,7 @@ describe(StorageComponent.name, () => {
   });
 
   it('loads PDFs without selecting an entry for preview', () => {
-    expect(storageApi.getPdfs).toHaveBeenCalled();
+    expect(storageApi.getFiles).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('briefing.pdf');
     expect(fixture.nativeElement.textContent).toContain('Keine Datei ausgewählt');
 
@@ -124,7 +124,7 @@ describe(StorageComponent.name, () => {
     fixture.detectChanges();
 
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
-    expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-2');
+    expect(iframe.getAttribute('src')).toBe('/api/assets/files/pdf-2');
     expect(fixture.nativeElement.querySelector('ngx-extended-pdf-viewer')).toBeNull();
   });
 
@@ -178,7 +178,7 @@ describe(StorageComponent.name, () => {
   });
 
   it('shows a preview error when the selected PDF file is missing', () => {
-    storageApi.checkPdf.and.callFake((id) =>
+    storageApi.checkFile.and.callFake((id) =>
       id === 'pdf-2' ? throwError(() => ({ status: 404 })) : of(undefined),
     );
 
@@ -189,7 +189,7 @@ describe(StorageComponent.name, () => {
     expect(fixture.nativeElement.querySelector('iframe')).toBeNull();
     expect(fixture.nativeElement.querySelector('ngx-extended-pdf-viewer')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain(
-      'Die PDF ist in der Datenbank gelistet, fehlt aber im Upload-Speicher.',
+      'Die Datei ist gelistet, fehlt aber im Upload-Speicher.',
     );
   });
 
@@ -199,27 +199,46 @@ describe(StorageComponent.name, () => {
       id: 'pdf-3',
       originalName: 'uploaded.pdf',
     };
-    storageApi.uploadPdf.and.returnValue(of(uploaded));
+    storageApi.uploadFile.and.returnValue(of(uploaded));
 
     dispatchFileSelection(new File(['%PDF-1.7'], 'uploaded.pdf', { type: 'application/pdf' }));
     fixture.detectChanges();
 
-    expect(storageApi.uploadPdf).toHaveBeenCalled();
+    expect(storageApi.uploadFile).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('uploaded.pdf');
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
-    expect(iframe.getAttribute('src')).toBe('/api/assets/pdfs/pdf-3');
+    expect(iframe.getAttribute('src')).toBe('/api/assets/files/pdf-3');
   });
 
-  it('rejects non-PDF files on the client', () => {
+
+  it('uploads and offers an Office file for download', () => {
+    const uploaded: PdfAssetResponse = {
+      ...pdfs[0],
+      id: 'file-3',
+      originalName: 'planung.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+    storageApi.uploadFile.and.returnValue(of(uploaded));
+
+    dispatchFileSelection(new File(['PK\x03\x04'], 'planung.xlsx', { type: uploaded.contentType }));
+    fixture.detectChanges();
+
+    expect(storageApi.uploadFile).toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('planung.xlsx');
+    expect(fixture.nativeElement.textContent).toContain('Herunterladen');
+    expect(fixture.nativeElement.querySelector('iframe')).toBeNull();
+  });
+
+  it('rejects unsupported files on the client', () => {
     dispatchFileSelection(new File(['hello'], 'notes.txt', { type: 'text/plain' }));
     fixture.detectChanges();
 
-    expect(storageApi.uploadPdf).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Nur PDF-Dateien sind erlaubt.');
+    expect(storageApi.uploadFile).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Nur PDF-, Word-, Excel- und PowerPoint-Dateien sind erlaubt.');
   });
 
   it('deletes a PDF after confirmation', () => {
-    storageApi.deletePdf.and.returnValue(of(undefined));
+    storageApi.deleteFile.and.returnValue(of(undefined));
 
     const row = fixture.debugElement.query(By.css('.pdf-select')).nativeElement as HTMLButtonElement;
     row.click();
@@ -231,11 +250,11 @@ describe(StorageComponent.name, () => {
 
     const confirmButton = Array.from(
       fixture.nativeElement.querySelectorAll('.confirm-modal .button') as NodeListOf<HTMLButtonElement>,
-    ).find((button) => button.textContent?.includes('PDF löschen'));
+    ).find((button) => button.textContent?.includes('Datei löschen'));
     confirmButton?.click();
     fixture.detectChanges();
 
-    expect(storageApi.deletePdf).toHaveBeenCalledWith('pdf-1');
+    expect(storageApi.deleteFile).toHaveBeenCalledWith('pdf-1');
     expect(fixture.nativeElement.textContent).not.toContain('briefing.pdf');
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement;
     expect(iframe).toBeNull();
