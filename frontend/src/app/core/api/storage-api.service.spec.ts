@@ -84,4 +84,18 @@ describe(StorageApiService.name, () => {
     expect(request.request.method).toBe('HEAD');
     request.flush(null);
   });
+
+  it('starts, checks, and exposes document previews', () => {
+    service.requestPreview('file 1').subscribe();
+    const start = http.expectOne('/api/assets/files/file%201/preview');
+    expect(start.request.method).toBe('POST');
+    start.flush({ status: 'pending', url: null, errorCode: null });
+
+    service.getPreviewStatus('file 1').subscribe();
+    const status = http.expectOne('/api/assets/files/file%201/preview/status');
+    expect(status.request.method).toBe('GET');
+    status.flush({ status: 'ready', url: '/preview', errorCode: null });
+
+    expect(service.getPreviewUrl('file 1')).toBe('/api/assets/files/file%201/preview');
+  });
 });

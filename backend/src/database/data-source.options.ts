@@ -7,6 +7,7 @@ import { Space } from '../spaces/entities/space.entity';
 import { InitialSchema1776297600000 } from './migrations/1776297600000-InitialSchema';
 import { AddSpaceHierarchy1776384000000 } from './migrations/1776384000000-AddSpaceHierarchy';
 import { AddAssets1776470400000 } from './migrations/1776470400000-AddAssets';
+import { AddAssetPreviews1781053200000 } from './migrations/1781053200000-AddAssetPreviews';
 
 interface DatabaseOptionsOverrides {
   migrationsRun?: boolean;
@@ -42,7 +43,12 @@ export function createDatabaseOptions(
     username: readString(env, 'DB_USER', 'brainvault'),
     password: readString(env, 'DB_PASS', 'brainvault_secret'),
     entities: [Space, Page, AppSetting, Asset],
-    migrations: [InitialSchema1776297600000, AddSpaceHierarchy1776384000000, AddAssets1776470400000],
+    migrations: [
+      InitialSchema1776297600000,
+      AddSpaceHierarchy1776384000000,
+      AddAssets1776470400000,
+      AddAssetPreviews1781053200000,
+    ],
     migrationsRun: overrides.migrationsRun ?? resolveDbMigrationsRun(env['DB_MIGRATIONS_RUN']),
     synchronize: false,
     logging: nodeEnv === 'development',

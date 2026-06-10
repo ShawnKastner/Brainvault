@@ -35,23 +35,9 @@
     <header class="preview-header">
       <button type="button" class="storage-panel-toggle" [attr.aria-controls]="'storage-file-panel'" [attr.aria-expanded]="!storagePanelCollapsed()" (click)="toggleStoragePanel()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.5 3.5h11M2.5 8h11M2.5 12.5h11" /></svg><span>{{ storagePanelCollapsed() ? 'Dateien' : 'Liste ausblenden' }}</span></button>
       <div><p>{{ getFileTypeLabel(file) }} · {{ formatFileSize(file.size) }}</p><h2>{{ file.originalName }}</h2></div>
+      <a class="preview-download" [href]="storageApi.getFileUrl(file.id)" download>Original herunterladen</a>
     </header>
-    @if (previewChecking()) {
-    <div class="preview-status"><p>Datei wird geprüft...</p></div>
-    } @else if (previewError(); as message) {
-    <div class="preview-status preview-error" role="alert"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M24 6 44 40H4L24 6Z" /><path d="M24 17v11M24 34h.01" /></svg><p>{{ message }}</p></div>
-    } @else if (!selectedFileIsPdf()) {
-    <div class="preview-status office-preview">
-      <span [class]="'file-type-icon large ' + getFileTypeClass(file)" aria-hidden="true">{{ getFileTypeLabel(file).slice(0, 1) }}</span>
-      <h3>{{ getFileTypeLabel(file) }}-Datei</h3>
-      <p>Für dieses Format ist keine Vorschau verfügbar. Die Datei kann heruntergeladen und in der passenden Office-Anwendung geöffnet werden.</p>
-      <a class="button" [href]="storageApi.getFileUrl(file.id)" download>Herunterladen</a>
-    </div>
-    } @else if (usesEmbeddedPdfViewer()) {
-      @if (selectedFileViewerUrl(); as url) {
-      <div class="pdf-viewer-frame"><ngx-extended-pdf-viewer class="pdf-viewer" [src]="url" [height]="'100%'" [showToolbar]="true" [pageViewMode]="'multiple'" [scrollMode]="pdfScrollMode.vertical" [textLayer]="true" [showSidebarButton]="false" [showFindButton]="true" [showPagingButtons]="'always-visible'" [showZoomButtons]="'always-visible'" [showZoomDropdown]="'always-visible'" [showOpenFileButton]="false" [showPrintButton]="true" [showDownloadButton]="true" [showSecondaryToolbarButton]="'always-visible'" [showEditorButtons]="false" [showTextEditor]="false" [showStampEditor]="false" [showCommentEditor]="false" [showDrawEditor]="false" [showHighlightEditor]="false" [showSignatureEditor]="false"></ngx-extended-pdf-viewer></div>
-      }
-    } @else if (selectedFileUrl(); as url) { <iframe class="pdf-frame" [src]="url" [title]="file.originalName"></iframe> }
+    <bv-document-preview [file]="file" />
     } @else {
     <div class="preview-empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="8" y="4" width="32" height="40" rx="3" /><path d="M16 16h16M16 22h16M16 28h10" /></svg><p>Keine Datei ausgewählt</p></div>
     }

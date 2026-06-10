@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createReadStream } from 'fs';
@@ -8,10 +8,13 @@ import { basename, extname, join, resolve } from 'path';
 import { randomUUID } from 'crypto';
 import type { Readable } from 'stream';
 import { In, Repository } from 'typeorm';
+import { unzipSync } from 'fflate';
 import { FileAssetResponseDto } from './dto/file-asset-response.dto';
 import { ImageUploadResponseDto } from './dto/image-upload-response.dto';
 import { PdfAssetResponseDto } from './dto/pdf-asset-response.dto';
 import { Asset } from './entities/asset.entity';
+import { AssetPreviewService } from './preview/asset-preview.service';
+import { PDF_CONTENT_TYPE } from './preview/preview.constants';
 
 export interface UploadedImageFile {
   originalname: string;
@@ -30,6 +33,7 @@ export interface StoredImage {
 
 export interface StoredFile {
   stream: Readable;
+  filePath: string;
   contentType: string;
   filename: string;
   originalName: string;
@@ -53,7 +57,6 @@ const IMAGE_EXTENSIONS = new Map<string, string>([
 
 const STORED_IMAGE_PATTERN = /^[a-f0-9-]{36}\.(?:png|jpe?g|webp|gif)$/i;
 const STORED_FILE_PATTERN = /^[a-f0-9-]{36}\.(?:pdf|docx?|xlsx?|pptx?)$/i;
-const PDF_CONTENT_TYPE = 'application/pdf';
 const PDF_SIGNATURE = Buffer.from('%PDF-');
 const ZIP_SIGNATURES = [
   Buffer.from([0x50, 0x4b, 0x03, 0x04]),
@@ -61,6 +64,7 @@ const ZIP_SIGNATURES = [
   Buffer.from([0x50, 0x4b, 0x07, 0x08]),
 ];
 const OLE_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+const MAX_OOXML_ENTRY_COUNT = 10_000;
 const FILE_TYPES = new Map<string, { extension: string; contentTypes: string[]; signature: 'pdf' | 'zip' | 'ole' }>([
   ['.pdf', { extension: '.pdf', contentTypes: [PDF_CONTENT_TYPE], signature: 'pdf' }],
   ['.doc', { extension: '.doc', contentTypes: ['application/msword'], signature: 'ole' }],
@@ -78,6 +82,8 @@ export class AssetsService {
     private readonly config: ConfigService,
     @InjectRepository(Asset)
     private readonly assetsRepo: Repository<Asset>,
+    @Optional()
+    private readonly previews?: AssetPreviewService,
   ) {}
 
   async saveImage(file: UploadedImageFile): Promise<ImageUploadResponseDto> {
@@ -105,6 +111,11 @@ export class AssetsService {
         originalName,
         contentType: file.mimetype,
         size: file.size,
+        previewStatus: 'not_required',
+        previewSize: null,
+        previewErrorCode: null,
+        previewGeneratorVersion: null,
+        previewUpdatedAt: null,
       }),
     );
 
@@ -145,6 +156,17 @@ export class AssetsService {
     if (!hasExpectedSignature(file.buffer, fileType.signature)) {
       throw new BadRequestException('Der Dateiinhalt entspricht nicht dem angegebenen Dateiformat.');
     }
+    if (
+      fileType.signature === 'zip' &&
+      !hasExpectedOoxmlStructure(
+        file.buffer,
+        extension,
+        this.maxPdfUploadBytes(),
+        this.maxPreviewBytes(),
+      )
+    ) {
+      throw new BadRequestException('Der Dateiinhalt entspricht nicht dem angegebenen Office-Format.');
+    }
 
     const filename = `${randomUUID()}${fileType.extension}`;
     const originalName = normalizeAssetOriginalName(file.originalname);
@@ -157,9 +179,15 @@ export class AssetsService {
         originalName,
         contentType: fileType.contentTypes[0],
         size: file.size,
+        previewStatus: fileType.extension === '.pdf' ? 'ready' : 'pending',
+        previewSize: fileType.extension === '.pdf' ? file.size : null,
+        previewErrorCode: null,
+        previewGeneratorVersion: fileType.extension === '.pdf' ? 'original' : null,
+        previewUpdatedAt: fileType.extension === '.pdf' ? new Date() : null,
       }),
     );
 
+    await this.previews?.scheduleAfterUpload(asset);
     return toFileResponse(asset);
   }
 
@@ -168,6 +196,7 @@ export class AssetsService {
 
     return {
       stream: createReadStream(filePath),
+      filePath,
       contentType: asset.contentType,
       filename: asset.filename,
       originalName: normalizeAssetOriginalName(asset.originalName),
@@ -184,30 +213,38 @@ export class AssetsService {
       throw new BadRequestException('Ungültige Datei-ID.');
     }
 
-    const asset = await this.assetsRepo.findOne({ where: { id, type: In(['file', 'pdf']) } });
-    if (!asset) {
-      throw new NotFoundException('Datei nicht gefunden.');
-    }
+    await this.assetsRepo.manager.transaction(async (manager) => {
+      const asset = await manager.findOne(Asset, {
+        where: { id, type: In(['file', 'pdf']) },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!asset) {
+        throw new NotFoundException('Datei nicht gefunden.');
+      }
 
-    if (!isStoredFileFilename(asset.filename)) {
-      throw new BadRequestException('Ungültiger Dateiname.');
-    }
+      if (!isStoredFileFilename(asset.filename)) {
+        throw new BadRequestException('Ungültiger Dateiname.');
+      }
 
-    const filePath = this.resolveFilePath(asset);
-    try {
-      await unlink(filePath);
-    } catch (error) {
-      if (!isFileMissingError(error)) throw error;
-    }
+      await this.previews?.removePreview(id);
+      try {
+        await unlink(this.resolveFilePath(asset));
+      } catch (error) {
+        if (!isFileMissingError(error)) throw error;
+      }
 
-    await this.assetsRepo.delete({ id });
+      await manager.delete(Asset, { id });
+    });
   }
 
   // Compatibility methods for existing clients using the PDF-only API.
   async listPdfs(): Promise<PdfAssetResponseDto[]> {
     return (await this.listFiles())
       .filter((file) => file.contentType === PDF_CONTENT_TYPE)
-      .map((file) => ({ ...file, url: `/api/assets/pdfs/${file.id}` }));
+      .map(({ preview: _preview, ...file }) => ({
+        ...file,
+        url: `/api/assets/pdfs/${file.id}`,
+      }));
   }
 
   async savePdf(file: UploadedPdfFile): Promise<PdfAssetResponseDto> {
@@ -215,7 +252,8 @@ export class AssetsService {
       throw new BadRequestException('Nur PDF-Dateien sind erlaubt.');
     }
     const response = await this.saveFile(file);
-    return { ...response, url: `/api/assets/pdfs/${response.id}` };
+    const { preview: _preview, ...pdfResponse } = response;
+    return { ...pdfResponse, url: `/api/assets/pdfs/${response.id}` };
   }
 
   async openPdf(id: string): Promise<StoredFile> {
@@ -349,6 +387,10 @@ export class AssetsService {
   private maxPdfUploadBytes(): number {
     return this.config.get<number>('app.maxPdfUploadBytes', 25 * 1024 * 1024);
   }
+
+  private maxPreviewBytes(): number {
+    return this.config.get<number>('app.maxPreviewBytes', 100 * 1024 * 1024);
+  }
 }
 
 export function isStoredImageFilename(filename: string): boolean {
@@ -410,6 +452,11 @@ function toFileResponse(asset: Asset): FileAssetResponseDto {
     size: asset.size,
     createdAt: asset.createdAt.toISOString(),
     updatedAt: asset.updatedAt.toISOString(),
+    preview: {
+      status: asset.previewStatus,
+      url: asset.previewStatus === 'ready' ? `/api/assets/files/${asset.id}/preview` : null,
+      errorCode: asset.previewErrorCode,
+    },
   };
 }
 
@@ -424,4 +471,58 @@ function toPdfResponse(asset: Asset): PdfAssetResponseDto {
     createdAt: asset.createdAt.toISOString(),
     updatedAt: asset.updatedAt.toISOString(),
   };
+}
+
+function hasExpectedOoxmlStructure(
+  buffer: Buffer,
+  extension: string,
+  maxCompressedBytes: number,
+  maxExpandedBytes: number,
+): boolean {
+  const documentEntry =
+    extension === '.docx'
+      ? 'word/document.xml'
+      : extension === '.xlsx'
+        ? 'xl/workbook.xml'
+        : extension === '.pptx'
+          ? 'ppt/presentation.xml'
+          : null;
+  if (!documentEntry || buffer.length > maxCompressedBytes) return false;
+
+  let entryCount = 0;
+  let compressedBytes = 0;
+  let expandedBytes = 0;
+  let hasContentTypes = false;
+  let hasDocumentEntry = false;
+
+  try {
+    unzipSync(new Uint8Array(buffer), {
+      filter: (entry) => {
+        entryCount += 1;
+        compressedBytes += entry.size;
+        expandedBytes += entry.originalSize;
+
+        if (
+          entryCount > MAX_OOXML_ENTRY_COUNT ||
+          !Number.isSafeInteger(compressedBytes) ||
+          !Number.isSafeInteger(expandedBytes) ||
+          compressedBytes > maxCompressedBytes ||
+          expandedBytes > maxExpandedBytes
+        ) {
+          throw new Error('OOXML archive exceeds validation limits');
+        }
+
+        if (entry.name === '[Content_Types].xml') hasContentTypes = true;
+        if (entry.name === documentEntry) hasDocumentEntry = true;
+
+        // The central-directory metadata is sufficient for structural validation.
+        // Returning false prevents any untrusted archive entry from being inflated.
+        return false;
+      },
+    });
+
+    return hasContentTypes && hasDocumentEntry;
+  } catch {
+    return false;
+  }
 }
