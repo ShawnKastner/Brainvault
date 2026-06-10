@@ -64,6 +64,7 @@ const ZIP_SIGNATURES = [
   Buffer.from([0x50, 0x4b, 0x07, 0x08]),
 ];
 const OLE_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+const MAX_OOXML_ENTRY_COUNT = 10_000;
 const FILE_TYPES = new Map<string, { extension: string; contentTypes: string[]; signature: 'pdf' | 'zip' | 'ole' }>([
   ['.pdf', { extension: '.pdf', contentTypes: [PDF_CONTENT_TYPE], signature: 'pdf' }],
   ['.doc', { extension: '.doc', contentTypes: ['application/msword'], signature: 'ole' }],
@@ -155,7 +156,15 @@ export class AssetsService {
     if (!hasExpectedSignature(file.buffer, fileType.signature)) {
       throw new BadRequestException('Der Dateiinhalt entspricht nicht dem angegebenen Dateiformat.');
     }
-    if (fileType.signature === 'zip' && !hasExpectedOoxmlStructure(file.buffer, extension)) {
+    if (
+      fileType.signature === 'zip' &&
+      !hasExpectedOoxmlStructure(
+        file.buffer,
+        extension,
+        this.maxPdfUploadBytes(),
+        this.maxPreviewBytes(),
+      )
+    ) {
       throw new BadRequestException('Der Dateiinhalt entspricht nicht dem angegebenen Office-Format.');
     }
 
@@ -378,6 +387,10 @@ export class AssetsService {
   private maxPdfUploadBytes(): number {
     return this.config.get<number>('app.maxPdfUploadBytes', 25 * 1024 * 1024);
   }
+
+  private maxPreviewBytes(): number {
+    return this.config.get<number>('app.maxPreviewBytes', 100 * 1024 * 1024);
+  }
 }
 
 export function isStoredImageFilename(filename: string): boolean {
@@ -463,14 +476,52 @@ function toPdfResponse(asset: Asset): PdfAssetResponseDto {
 function hasExpectedOoxmlStructure(
   buffer: Buffer,
   extension: string,
+  maxCompressedBytes: number,
+  maxExpandedBytes: number,
 ): boolean {
+  const documentEntry =
+    extension === '.docx'
+      ? 'word/document.xml'
+      : extension === '.xlsx'
+        ? 'xl/workbook.xml'
+        : extension === '.pptx'
+          ? 'ppt/presentation.xml'
+          : null;
+  if (!documentEntry || buffer.length > maxCompressedBytes) return false;
+
+  let entryCount = 0;
+  let compressedBytes = 0;
+  let expandedBytes = 0;
+  let hasContentTypes = false;
+  let hasDocumentEntry = false;
+
   try {
-    const files = unzipSync(new Uint8Array(buffer));
-    if (!files['[Content_Types].xml']) return false;
-    if (extension === '.docx') return Boolean(files['word/document.xml']);
-    if (extension === '.xlsx') return Boolean(files['xl/workbook.xml']);
-    if (extension === '.pptx') return Boolean(files['ppt/presentation.xml']);
-    return false;
+    unzipSync(new Uint8Array(buffer), {
+      filter: (entry) => {
+        entryCount += 1;
+        compressedBytes += entry.size;
+        expandedBytes += entry.originalSize;
+
+        if (
+          entryCount > MAX_OOXML_ENTRY_COUNT ||
+          !Number.isSafeInteger(compressedBytes) ||
+          !Number.isSafeInteger(expandedBytes) ||
+          compressedBytes > maxCompressedBytes ||
+          expandedBytes > maxExpandedBytes
+        ) {
+          throw new Error('OOXML archive exceeds validation limits');
+        }
+
+        if (entry.name === '[Content_Types].xml') hasContentTypes = true;
+        if (entry.name === documentEntry) hasDocumentEntry = true;
+
+        // The central-directory metadata is sufficient for structural validation.
+        // Returning false prevents any untrusted archive entry from being inflated.
+        return false;
+      },
+    });
+
+    return hasContentTypes && hasDocumentEntry;
   } catch {
     return false;
   }

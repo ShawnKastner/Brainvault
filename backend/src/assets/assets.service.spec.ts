@@ -77,9 +77,11 @@ describe(AssetsService.name, () => {
     };
     service = new AssetsService(
       {
-        get: jest.fn((key: string, fallback: string | number) =>
-          key === 'app.uploadDir' ? uploadDir : fallback,
-        ),
+        get: jest.fn((key: string, fallback: string | number) => {
+          if (key === 'app.uploadDir') return uploadDir;
+          if (key === 'app.maxPreviewBytes') return 1024;
+          return fallback;
+        }),
       } as unknown as ConfigService,
       assetsRepo as unknown as Repository<Asset>,
     );
@@ -240,6 +242,23 @@ describe(AssetsService.name, () => {
       size: 5,
       buffer: Buffer.from('hello'),
     })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects OOXML archives whose expanded size exceeds the validation limit', async () => {
+    const buffer = Buffer.from(zipSync({
+      '[Content_Types].xml': strToU8('<Types />'),
+      'word/document.xml': strToU8('<document />'),
+      'word/media/bomb.bin': new Uint8Array(2048),
+    }));
+
+    expect(buffer.length).toBeLessThan(1024);
+    await expect(service.saveFile({
+      originalname: 'bomb.docx',
+      mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: buffer.length,
+      buffer,
+    })).rejects.toBeInstanceOf(BadRequestException);
+    expect(assetsRepo.save).not.toHaveBeenCalled();
   });
 
   it('rejects invalid PDF uploads', async () => {
