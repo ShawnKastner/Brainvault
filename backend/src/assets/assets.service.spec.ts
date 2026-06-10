@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { Repository } from 'typeorm';
+import { zipSync, strToU8 } from 'fflate';
 import {
   AssetsService,
   isStoredImageFilename,
@@ -18,6 +19,9 @@ interface AssetRepositoryMock {
   find: jest.Mock<Promise<Asset[]>, [unknown]>;
   findOne: jest.Mock<Promise<Asset | null>, [unknown]>;
   delete: jest.Mock<Promise<unknown>, [unknown]>;
+  manager: {
+    transaction: jest.Mock;
+  };
 }
 
 const createdAt = new Date('2026-04-21T09:15:00.000Z');
@@ -33,6 +37,11 @@ function createAsset(overrides: Partial<Asset> = {}): Asset {
     originalName: 'asset.png',
     contentType: 'image/png',
     size: 4,
+    previewStatus: 'not_required',
+    previewSize: null,
+    previewErrorCode: null,
+    previewGeneratorVersion: null,
+    previewUpdatedAt: null,
     createdAt,
     updatedAt,
     ...overrides,
@@ -57,6 +66,14 @@ describe(AssetsService.name, () => {
       find: jest.fn(),
       findOne: jest.fn(),
       delete: jest.fn(),
+      manager: {
+        transaction: jest.fn(async (callback: (manager: unknown) => Promise<unknown>) =>
+          callback({
+            findOne: assetsRepo.findOne,
+            delete: jest.fn(async (...args: unknown[]) => assetsRepo.delete(args[1])),
+          }),
+        ),
+      },
     };
     service = new AssetsService(
       {
@@ -206,8 +223,8 @@ describe(AssetsService.name, () => {
     const response = await service.saveFile({
       originalname,
       mimetype,
-      size: 8,
-      buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]),
+      size: 100,
+      buffer: createOoxmlBuffer(originalname),
     });
 
     expect(response.originalName).toBe(originalname);
@@ -385,3 +402,17 @@ describe(AssetsService.name, () => {
     expect(assetsRepo.delete).toHaveBeenCalledWith({ id: pdfId });
   });
 });
+
+function createOoxmlBuffer(filename: string): Buffer {
+  const extension = filename.split('.').pop();
+  const documentEntry =
+    extension === 'docx'
+      ? 'word/document.xml'
+      : extension === 'xlsx'
+        ? 'xl/workbook.xml'
+        : 'ppt/presentation.xml';
+  return Buffer.from(zipSync({
+    '[Content_Types].xml': strToU8('<Types />'),
+    [documentEntry]: strToU8('<document />'),
+  }));
+}

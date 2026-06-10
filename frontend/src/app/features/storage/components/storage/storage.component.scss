@@ -298,6 +298,30 @@
   padding: 0.85rem 1.25rem;
 }
 
+.preview-header > div {
+  min-width: 0;
+}
+
+.preview-download {
+  background: var(--color-surface-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-left: auto;
+  padding: 0.45rem 0.7rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.preview-download:hover,
+.preview-download:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+  outline: none;
+}
+
 .storage-panel-toggle {
   align-items: center;
   background: var(--color-surface-panel);
@@ -458,6 +482,12 @@
 
   .preview-header h2 {
     font-size: 1rem;
+  }
+
+  .preview-download {
+    margin-left: 0;
+    text-align: center;
+    width: 100%;
   }
 
   .storage-panel-toggle {

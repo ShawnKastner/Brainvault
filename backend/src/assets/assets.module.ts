@@ -5,10 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AssetsController } from './assets.controller';
 import { AssetsService } from './assets.service';
 import { Asset } from './entities/asset.entity';
+import { AssetPreviewService } from './preview/asset-preview.service';
+import { PreviewQueueModule } from './preview/preview-queue.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Asset]),
+    PreviewQueueModule,
     MulterModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -22,7 +25,7 @@ import { Asset } from './entities/asset.entity';
     }),
   ],
   controllers: [AssetsController],
-  providers: [AssetsService],
+  providers: [AssetsService, AssetPreviewService],
   exports: [AssetsService],
 })
 export class AssetsModule {}

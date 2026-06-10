@@ -1,7 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { Readable } from 'stream';
-import { AssetsController } from './assets.controller';
+import { AssetsController, parseRange } from './assets.controller';
 import { AssetsService } from './assets.service';
+import { AssetPreviewService } from './preview/asset-preview.service';
 
 describe(AssetsController.name, () => {
   it('rejects uploads without a file', async () => {
@@ -114,5 +115,25 @@ describe(AssetsController.name, () => {
     expect(service.ensurePdfReadable).toHaveBeenCalledWith('pdf-1');
     expect(service.openPdf).toHaveBeenCalledWith('pdf-1');
     expect(service.deletePdf).toHaveBeenCalledWith('pdf-1');
+  });
+
+  it('delegates preview operations to the preview service', async () => {
+    const assets = {} as AssetsService;
+    const previews = {
+      requestPreview: jest.fn().mockResolvedValue({ status: 'pending' }),
+      getPreviewStatus: jest.fn().mockResolvedValue({ status: 'ready' }),
+    } as unknown as AssetPreviewService;
+    const controller = new AssetsController(assets, previews);
+
+    await expect(controller.requestPreview('file-1')).resolves.toEqual({ status: 'pending' });
+    await expect(controller.getPreviewStatus('file-1')).resolves.toEqual({ status: 'ready' });
+  });
+
+  it('parses standard and suffix byte ranges', () => {
+    expect(parseRange('bytes=10-19', 100)).toEqual({ start: 10, end: 19 });
+    expect(parseRange('bytes=90-', 100)).toEqual({ start: 90, end: 99 });
+    expect(parseRange('bytes=-10', 100)).toEqual({ start: 90, end: 99 });
+    expect(parseRange('bytes=100-120', 100)).toBe('invalid');
+    expect(parseRange('items=0-10', 100)).toBe('invalid');
   });
 });

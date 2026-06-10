@@ -12,7 +12,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableCors({
     origin: config.get<string[]>('app.corsOrigins'),
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
 

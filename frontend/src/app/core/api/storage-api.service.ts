@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api-url.token';
-import type { StorageFileResponse } from '../models/storage.model';
+import type { FilePreviewResponse, StorageFileResponse } from '../models/storage.model';
 
 @Injectable({ providedIn: 'root' })
 export class StorageApiService {
@@ -25,6 +25,23 @@ export class StorageApiService {
 
   checkFile(id: string): Observable<void> {
     return this.http.head<void>(this.getFileUrl(id));
+  }
+
+  requestPreview(id: string): Observable<FilePreviewResponse> {
+    return this.http.post<FilePreviewResponse>(
+      `${this.getFileUrl(id)}/preview`,
+      null,
+    );
+  }
+
+  getPreviewStatus(id: string): Observable<FilePreviewResponse> {
+    return this.http.get<FilePreviewResponse>(
+      `${this.getFileUrl(id)}/preview/status`,
+    );
+  }
+
+  getPreviewUrl(id: string): string {
+    return `${this.getFileUrl(id)}/preview`;
   }
 
   getFileUrl(id: string): string {

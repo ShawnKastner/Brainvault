@@ -16,6 +16,39 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  gotenberg:
+    image: gotenberg/gotenberg:8.17.3@sha256:779d4cf9bb36cb645e26e03fdb1b929b5d0fd01bfa58c336da5e224dd154626e
+    restart: unless-stopped
+    command: ["gotenberg", "--chromium-disable-routes=true", "--api-timeout=120s"]
+    networks:
+      - conversion
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    cpus: 1.5
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   backend:
     image: ${PRIVATE_REGISTRY}/brainvault-backend:${APP_IMAGE_TAG:-latest}
     pull_policy: always
@@ -34,12 +67,66 @@ services:
       UPLOAD_DIR: /app/uploads
       MAX_IMAGE_UPLOAD_BYTES: 5242880
       MAX_PDF_UPLOAD_BYTES: 26214400
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      GOTENBERG_URL: http://gotenberg:3000
+      PREVIEW_CONVERSION_TIMEOUT_MS: 120000
+      MAX_PREVIEW_BYTES: 104857600
+      PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3
       CORS_ORIGINS: http://localhost:4200,http://localhost
     volumes:
       - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  preview-worker:
+    image: ${PRIVATE_REGISTRY}/brainvault-backend:${APP_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    command: ["node", "dist/preview-worker"]
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: brainvault
+      DB_USER: brainvault
+      DB_PASS: brainvault_secret
+      DB_MIGRATIONS_RUN: "true"
+      NODE_ENV: production
+      UPLOAD_DIR: /app/uploads
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      GOTENBERG_URL: http://gotenberg:3000
+      PREVIEW_CONVERSION_TIMEOUT_MS: 120000
+      MAX_PREVIEW_BYTES: 104857600
+      PREVIEW_WORKER_CONCURRENCY: 1
+      PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3
+      PREVIEW_WORKER_ENABLED: "true"
+      PREVIEW_WORKER_PORT: 3001
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - default
+      - conversion
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gotenberg:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   frontend:
     image: ${PRIVATE_REGISTRY}/brainvault-frontend:${APP_IMAGE_TAG:-latest}
@@ -48,8 +135,19 @@ services:
     ports:
       - "4200:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   pgdata:
   uploads:
+  redisdata:
+
+networks:
+  conversion:
+    internal: true

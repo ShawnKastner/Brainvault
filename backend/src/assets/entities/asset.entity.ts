@@ -1,5 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
+export type AssetPreviewStatus = 'not_required' | 'pending' | 'processing' | 'ready' | 'failed';
+
 @Entity('assets')
 export class Asset {
   @PrimaryGeneratedColumn('uuid')
@@ -19,6 +21,21 @@ export class Asset {
 
   @Column()
   size: number;
+
+  @Column({ length: 24, default: 'not_required' })
+  previewStatus: AssetPreviewStatus;
+
+  @Column({ type: 'integer', nullable: true })
+  previewSize: number | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  previewErrorCode: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  previewGeneratorVersion: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  previewUpdatedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { FilePreviewResponseDto } from './file-preview-response.dto';
 
 export class FileAssetResponseDto {
   @ApiProperty({ example: '6d0fcb7a-5d8f-4d1f-a6d6-7a3117d23f09' })
@@ -24,4 +25,7 @@ export class FileAssetResponseDto {
 
   @ApiProperty({ example: '2026-04-21T09:15:00.000Z' })
   updatedAt: string;
+
+  @ApiProperty({ type: FilePreviewResponseDto })
+  preview: FilePreviewResponseDto;
 }

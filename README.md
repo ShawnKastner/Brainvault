@@ -9,8 +9,11 @@ docker compose up --build
 ```
 
 - Frontend:    http://localhost:4200
-- Backend API: http://localhost:3000/api
-- Swagger:     http://localhost:3000/api/docs
+- Backend API: http://localhost:3001/api
+- Swagger:     http://localhost:3001/api/docs
+
+Der Docker-Start umfasst PostgreSQL, Redis, Gotenberg, Backend-API,
+Preview-Worker und Frontend.
 
 
 ## Private Registry via GitHub Pipeline (Docker Pull, nicht oeffentlich)
@@ -104,6 +107,19 @@ brainvault/
 | Datenbank  | PostgreSQL 16                      |
 | Deploy     | Docker Compose + nginx             |
 
+## Dokumentvorschau
+
+Der Storage unterstützt PDF sowie Word-, Excel- und PowerPoint-Dateien. Office-Dokumente
+werden asynchron durch einen separaten Worker über Gotenberg/LibreOffice in PDF
+konvertiert und im vorhandenen PDF-Viewer angezeigt.
+
+- Unterstützte Formate: `PDF`, `DOC`, `DOCX`, `XLS`, `XLSX`, `PPT`, `PPTX`
+- Originaldateien bleiben unverändert herunterladbar.
+- Redis speichert Queue- und Asset-IDs, aber keine Dokumentinhalte.
+- Gotenberg ist nicht öffentlich erreichbar und läuft in einem internen Docker-Netz
+  ohne Internetzugriff.
+- LibreOffice kann Schriften und Layouts anders darstellen als Microsoft Office.
+
 ## API
 
 - `GET /api/health`
@@ -120,11 +136,19 @@ brainvault/
 - `POST /api/assets/pdfs`
 - `GET /api/assets/pdfs/:id`
 - `DELETE /api/assets/pdfs/:id`
+- `GET`, `POST` und `DELETE /api/assets/files`
+- `POST /api/assets/files/:id/preview`
+- `GET /api/assets/files/:id/preview/status`
+- `GET /api/assets/files/:id/preview`
 
 ## Konfiguration
 
 `DB_MIGRATIONS_RUN` steuert, ob offene TypeORM-Migrationen beim Backend-Start automatisch laufen. Der Default ist `true`.
 `MAX_IMAGE_UPLOAD_BYTES` begrenzt Bild-Uploads, `MAX_PDF_UPLOAD_BYTES` begrenzt PDF-Uploads fuer den Storage.
+
+Für Office-Vorschauen stehen zusätzlich `REDIS_HOST`, `REDIS_PORT`, `GOTENBERG_URL`,
+`PREVIEW_CONVERSION_TIMEOUT_MS`, `MAX_PREVIEW_BYTES`,
+`PREVIEW_WORKER_CONCURRENCY` und `PREVIEW_GENERATOR_VERSION` zur Verfügung.
 
 Das Frontend nutzt relativ `/api`; lokal leitet `proxy.conf.json` auf `http://localhost:3000` weiter, im Docker-Setup uebernimmt nginx den Proxy zum Backend.
 
