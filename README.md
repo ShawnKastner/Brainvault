@@ -18,7 +18,8 @@ Preview-Worker und Frontend.
 
 ## Private Registry via GitHub Pipeline (Docker Pull, nicht oeffentlich)
 
-Die Images koennen jetzt direkt ueber eine GitHub-Actions-Pipeline privat nach GHCR gebaut und gepusht werden.
+Backend, Frontend und das angepasste Gotenberg-Image koennen direkt ueber eine
+GitHub-Actions-Pipeline privat nach GHCR gebaut und gepusht werden.
 
 - Workflow: `.github/workflows/docker-private-registry.yml`
 - Compose fuer Pull aus Registry: `docker-compose.registry.yml`

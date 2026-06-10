@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish backend/frontend images to GHCR
+    name: Publish application images to GHCR
     runs-on: ubuntu-latest
 
     strategy:
@@ -33,6 +33,8 @@ jobs:
             context: ./backend
           - image_name: brainvault-frontend
             context: ./frontend
+          - image_name: brainvault-gotenberg
+            context: ./gotenberg
 
     steps:
       - name: Checkout repository

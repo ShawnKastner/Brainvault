@@ -29,10 +29,8 @@ services:
       retries: 10
 
   gotenberg:
-    image: brainvault-gotenberg:8.17.3
-    build:
-      context: ./gotenberg
-      dockerfile: Dockerfile
+    image: ${PRIVATE_REGISTRY}/brainvault-gotenberg:${APP_IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
     command: ["gotenberg", "--chromium-disable-routes=true", "--api-timeout=120s"]
     networks:
