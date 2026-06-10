@@ -74,8 +74,17 @@ export class AssetPreviewService implements OnApplicationBootstrap {
       throw new ConflictException('Für diese Datei ist keine Vorschau verfügbar.');
     }
 
-    if (asset.previewStatus === 'failed') {
+    const currentGeneratorVersion = this.config.get<string>(
+      'app.previewGeneratorVersion',
+      '1',
+    );
+    const previewIsOutdated =
+      asset.previewStatus === 'ready' &&
+      asset.previewGeneratorVersion !== currentGeneratorVersion;
+
+    if (asset.previewStatus === 'failed' || previewIsOutdated) {
       asset.previewStatus = 'pending';
+      asset.previewSize = null;
       asset.previewErrorCode = null;
       asset.previewUpdatedAt = new Date();
       await this.assetsRepo.save(asset);

@@ -150,6 +150,15 @@ Für Office-Vorschauen stehen zusätzlich `REDIS_HOST`, `REDIS_PORT`, `GOTENBERG
 `PREVIEW_CONVERSION_TIMEOUT_MS`, `MAX_PREVIEW_BYTES`,
 `PREVIEW_WORKER_CONCURRENCY` und `PREVIEW_GENERATOR_VERSION` zur Verfügung.
 
+Das lokale Gotenberg-Image enthält Fontconfig-Regeln für Office-Dokumente.
+Fehlende `Aptos`- und `Aptos Display`-Schriften werden auf Arial abgebildet,
+damit Textboxen deutlich näher am PowerPoint-Layout bleiben. Separat lizenzierte
+Office-Fonts können vor dem Build unter `gotenberg/fonts/` abgelegt werden.
+Die Fontdateien werden bewusst nicht durch Git versioniert; Details stehen in
+`gotenberg/fonts/README.md`. Eine geänderte `PREVIEW_GENERATOR_VERSION` sorgt
+dafür, dass bereits vorhandene Office-Vorschauen beim nächsten Öffnen neu
+erzeugt werden.
+
 Das Frontend nutzt relativ `/api`; lokal leitet `proxy.conf.json` auf `http://localhost:3000` weiter, im Docker-Setup uebernimmt nginx den Proxy zum Backend.
 
 ## Migrationen

@@ -29,7 +29,10 @@ services:
       retries: 10
 
   gotenberg:
-    image: gotenberg/gotenberg:8.17.3@sha256:779d4cf9bb36cb645e26e03fdb1b929b5d0fd01bfa58c336da5e224dd154626e
+    image: brainvault-gotenberg:8.17.3
+    build:
+      context: ./gotenberg
+      dockerfile: Dockerfile
     restart: unless-stopped
     command: ["gotenberg", "--chromium-disable-routes=true", "--api-timeout=120s"]
     networks:
@@ -72,7 +75,7 @@ services:
       GOTENBERG_URL: http://gotenberg:3000
       PREVIEW_CONVERSION_TIMEOUT_MS: 120000
       MAX_PREVIEW_BYTES: 104857600
-      PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3
+      PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3-office-fonts-v1
       CORS_ORIGINS: http://localhost:4200,http://localhost
     volumes:
       - uploads:/app/uploads
@@ -107,7 +110,7 @@ services:
       PREVIEW_CONVERSION_TIMEOUT_MS: 120000
       MAX_PREVIEW_BYTES: 104857600
       PREVIEW_WORKER_CONCURRENCY: 1
-      PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3
+      PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3-office-fonts-v1
       PREVIEW_WORKER_ENABLED: "true"
       PREVIEW_WORKER_PORT: 3001
     volumes:

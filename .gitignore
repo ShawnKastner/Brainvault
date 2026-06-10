@@ -1,0 +1,5 @@
+# Proprietary Office fonts may be supplied locally for the Gotenberg image,
+# but must not be committed or redistributed without an appropriate license.
+gotenberg/fonts/*
+!gotenberg/fonts/.gitkeep
+!gotenberg/fonts/README.md
