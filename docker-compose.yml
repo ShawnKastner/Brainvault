@@ -38,6 +38,8 @@ services:
       - "gotenberg"
       - "--chromium-allow-list=^http://frontend(:80)?/.*"
       - "--api-timeout=120s"
+    environment:
+      HOME: /tmp
     networks:
       - default
       - conversion
