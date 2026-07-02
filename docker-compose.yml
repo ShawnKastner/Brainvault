@@ -36,9 +36,10 @@ services:
     restart: unless-stopped
     command:
       - "gotenberg"
-      - "--chromium-disable-routes=true"
+      - "--chromium-allow-list=^http://frontend(:80)?/.*"
       - "--api-timeout=120s"
     networks:
+      - default
       - conversion
     read_only: true
     tmpfs:
@@ -78,6 +79,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       GOTENBERG_URL: http://gotenberg:3000
+      FRONTEND_EXPORT_BASE_URL: http://frontend
       PREVIEW_CONVERSION_TIMEOUT_MS: 120000
       MAX_PREVIEW_BYTES: 104857600
       PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3-office-fonts-v1

@@ -88,6 +88,11 @@ export function validateEnvironment(config: Record<string, unknown>): Record<str
     REDIS_HOST: readString(config, 'REDIS_HOST', 'localhost'),
     REDIS_PORT: readNumber(config, 'REDIS_PORT', 6379),
     GOTENBERG_URL: readString(config, 'GOTENBERG_URL', 'http://localhost:3002'),
+    FRONTEND_EXPORT_BASE_URL: readString(
+      config,
+      'FRONTEND_EXPORT_BASE_URL',
+      'http://localhost:4200',
+    ),
     PREVIEW_CONVERSION_TIMEOUT_MS: readNumber(
       config,
       'PREVIEW_CONVERSION_TIMEOUT_MS',

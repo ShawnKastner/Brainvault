@@ -16,6 +16,7 @@ export class TopbarComponent {
   readonly activePage = input<PageResponse | null>(null);
   readonly editMode = input(false);
   readonly saving = input(false);
+  readonly exportingPdf = input(false);
   readonly storageActive = input(false);
   readonly compactLayout = input(false);
   readonly mobileNavOpen = input(false);
@@ -24,6 +25,7 @@ export class TopbarComponent {
   readonly showCreatePage = output<void>();
   readonly startEdit = output<void>();
   readonly deletePage = output<void>();
+  readonly exportPdf = output<void>();
   readonly cancelEdit = output<void>();
   readonly savePage = output<void>();
 }

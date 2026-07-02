@@ -9,11 +9,13 @@ import {
 @Component({
   standalone: true,
   imports: [MermaidRendererDirective],
-  template: '<div class="content" [innerHTML]="content" [bvRenderMermaid]="renderTrigger"></div>',
+  template:
+    '<div class="content" [innerHTML]="content" [bvRenderMermaid]="renderTrigger" (bvRenderMermaidComplete)="completed += 1"></div>',
 })
 class TestHostComponent {
   content = '';
   renderTrigger: unknown = 0;
+  completed = 0;
 }
 
 describe(MermaidRendererDirective.name, () => {
@@ -70,6 +72,7 @@ describe(MermaidRendererDirective.name, () => {
     expect(host.querySelector('pre')).toBeNull();
     expect(diagram).not.toBeNull();
     expect(diagram?.textContent).toContain('graph TD;A-->B');
+    expect(fixture.componentInstance.completed).toBe(1);
   });
 
   it('renders literal mermaid fences inside regular code blocks', async () => {
@@ -120,6 +123,7 @@ describe(MermaidRendererDirective.name, () => {
     expect(initializeSpy).not.toHaveBeenCalled();
     expect(renderSpy).not.toHaveBeenCalled();
     expect(host.querySelector('pre code.language-ts')?.textContent).toBe('const value = 1;');
+    expect(fixture.componentInstance.completed).toBe(1);
   });
 
   it('keeps invalid mermaid code visible and adds an error message', async () => {
@@ -139,6 +143,7 @@ describe(MermaidRendererDirective.name, () => {
     expect(host.querySelector('.mermaid-error')?.textContent).toContain(
       'Mermaid-Diagramm konnte nicht gerendert werden.',
     );
+    expect(fixture.componentInstance.completed).toBe(1);
   });
 });
 

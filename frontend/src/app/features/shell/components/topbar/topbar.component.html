@@ -42,6 +42,9 @@
       @if (!editMode()) {
         <button type="button" class="button" (click)="showCreatePage.emit()">+ Neue Seite</button>
         @if (activePage()) {
+          <button type="button" class="button" [disabled]="exportingPdf()" (click)="exportPdf.emit()">
+            {{ exportingPdf() ? 'Exportiert...' : 'PDF exportieren' }}
+          </button>
           <button type="button" class="button" (click)="startEdit.emit()">Bearbeiten</button>
           <button type="button" class="button danger" (click)="deletePage.emit()">Löschen</button>
         }

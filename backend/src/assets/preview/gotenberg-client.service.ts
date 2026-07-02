@@ -18,6 +18,29 @@ export class GotenbergClientService {
   constructor(private readonly config: ConfigService) {}
 
   async convert(filePath: string, filename: string): Promise<Buffer> {
+    const form = new FormData();
+    const input = await readFile(filePath);
+    form.append('files', new Blob([input]), filename);
+
+    return this.convertWithForm('/forms/libreoffice/convert', form);
+  }
+
+  async convertUrlToPdf(url: string): Promise<Buffer> {
+    const form = new FormData();
+    form.append('url', url);
+    form.append('paperWidth', '8.27');
+    form.append('paperHeight', '11.69');
+    form.append('preferCssPageSize', 'true');
+    form.append('printBackground', 'true');
+    form.append(
+      'waitForExpression',
+      'window.__brainvaultPdfReady === true && Array.from(document.images).every((img) => img.complete)',
+    );
+
+    return this.convertWithForm('/forms/chromium/convert/url', form);
+  }
+
+  private async convertWithForm(path: string, form: FormData): Promise<Buffer> {
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
@@ -25,12 +48,8 @@ export class GotenbergClientService {
     );
 
     try {
-      const form = new FormData();
-      const input = await readFile(filePath);
-      form.append('files', new Blob([input]), filename);
-
       const response = await fetch(
-        `${this.config.get<string>('app.gotenbergUrl', 'http://localhost:3002')}/forms/libreoffice/convert`,
+        `${this.config.get<string>('app.gotenbergUrl', 'http://localhost:3002')}${path}`,
         {
           method: 'POST',
           body: form,
