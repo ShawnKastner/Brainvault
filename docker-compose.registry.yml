@@ -32,9 +32,17 @@ services:
     image: ${PRIVATE_REGISTRY}/brainvault-gotenberg:${APP_IMAGE_TAG:-latest}
     pull_policy: always
     restart: unless-stopped
-    command: ["gotenberg", "--chromium-disable-routes=true", "--api-timeout=120s"]
+    command:
+      - "gotenberg"
+      - "--chromium-allow-list=^http://frontend(:80)?/.*"
+      - "--api-timeout=120s"
+    environment:
+      HOME: /tmp
+      LIBREOFFICE_DENY_PRIVATE_IPS: "true"
+      LIBREOFFICE_DENY_PUBLIC_IPS: "true"
     networks:
       - conversion
+      - export
     read_only: true
     tmpfs:
       - /tmp:size=256m
@@ -71,12 +79,16 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       GOTENBERG_URL: http://gotenberg:3000
+      FRONTEND_EXPORT_BASE_URL: http://frontend
       PREVIEW_CONVERSION_TIMEOUT_MS: 120000
       MAX_PREVIEW_BYTES: 104857600
       PREVIEW_GENERATOR_VERSION: gotenberg-8.17.3-office-fonts-v1
       CORS_ORIGINS: http://localhost:4200,http://localhost
     volumes:
       - uploads:/app/uploads
+    networks:
+      - default
+      - conversion
     depends_on:
       db:
         condition: service_healthy
@@ -135,6 +147,9 @@ services:
     restart: unless-stopped
     ports:
       - "4200:80"
+    networks:
+      - default
+      - export
     depends_on:
       backend:
         condition: service_healthy
@@ -151,4 +166,6 @@ volumes:
 
 networks:
   conversion:
+    internal: true
+  export:
     internal: true

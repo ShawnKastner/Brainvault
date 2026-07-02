@@ -7,7 +7,9 @@ import {
   NgZone,
   OnChanges,
   OnDestroy,
+  Output,
   inject,
+  EventEmitter,
 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import DOMPurify from 'dompurify';
@@ -108,6 +110,7 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
   private readonly document = inject(DOCUMENT);
 
   @Input('bvRenderMermaid') renderTrigger: unknown;
+  @Output('bvRenderMermaidComplete') readonly renderComplete = new EventEmitter<void>();
 
   private destroyed = false;
   private mermaidPromise: Promise<MermaidRendererApi> | null = null;
@@ -146,7 +149,10 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
     this.renderRun = runId;
 
     const blocks = this.findMermaidBlocks();
-    if (blocks.length === 0) return;
+    if (blocks.length === 0) {
+      this.emitRenderComplete(runId);
+      return;
+    }
 
     let mermaid: MermaidRendererApi;
     try {
@@ -154,6 +160,7 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
     } catch {
       if (this.isCurrentRun(runId)) {
         blocks.forEach(({ element }) => this.showRenderError(element));
+        this.emitRenderComplete(runId);
       }
       return;
     }
@@ -162,6 +169,7 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
 
     mermaid.initialize(this.buildMermaidConfig());
     await Promise.all(blocks.map((block) => this.renderBlock(block, mermaid, runId)));
+    this.emitRenderComplete(runId);
   }
 
   private findMermaidBlocks(): MermaidBlock[] {
@@ -309,5 +317,13 @@ export class MermaidRendererDirective implements AfterViewInit, OnChanges, OnDes
 
   private isCurrentRun(runId: number): boolean {
     return !this.destroyed && this.renderRun === runId;
+  }
+
+  private emitRenderComplete(runId: number): void {
+    if (!this.isCurrentRun(runId)) return;
+
+    this.zone.run(() => {
+      this.renderComplete.emit();
+    });
   }
 }

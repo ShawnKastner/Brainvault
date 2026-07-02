@@ -13,6 +13,8 @@ import { DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
+import { PagesApiService } from '../../core/api/pages-api.service';
 import type { PageResponse, UpdatePageRequest } from '../../core/models/page.model';
 import type { CreateSpaceRequest, SpaceWithPagesResponse } from '../../core/models/space.model';
 import { SettingsService } from '../../core/services/settings.service';
@@ -61,6 +63,7 @@ export class ShellComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(NonNullableFormBuilder);
+  private readonly pagesApi = inject(PagesApiService);
   private readonly settingsService = inject(SettingsService);
 
   protected readonly store = inject(KnowledgeBaseStore);
@@ -74,6 +77,8 @@ export class ShellComponent implements OnDestroy {
   protected readonly mobileNavOpen = signal(false);
   protected readonly settingsOpen = signal(false);
   protected readonly deleteDialog = signal<DeleteDialog | null>(null);
+  protected readonly exportingPdf = signal(false);
+  protected readonly pageExportError = signal<string | null>(null);
 
   private compactLayoutMediaQuery: MediaQueryList | null = null;
   private readonly handleCompactLayoutChange = (event: MediaQueryListEvent) => {
@@ -86,6 +91,8 @@ export class ShellComponent implements OnDestroy {
   protected readonly activeSidebarSpaceId = computed(() =>
     this.store.activePageId() ? null : (this.store.activeSpace()?.id ?? null),
   );
+
+  protected readonly appError = computed(() => this.store.error() ?? this.pageExportError());
 
   protected readonly deleteDialogTitle = computed(() => {
     const dialog = this.deleteDialog();
@@ -282,6 +289,35 @@ export class ShellComponent implements OnDestroy {
     this.pageEditor?.submit();
   }
 
+  protected exportActivePagePdf(): void {
+    const page = this.store.activePage();
+    if (!page || this.exportingPdf()) return;
+
+    this.exportingPdf.set(true);
+    this.pageExportError.set(null);
+
+    this.pagesApi
+      .exportPdf(page.id)
+      .pipe(finalize(() => this.exportingPdf.set(false)))
+      .subscribe({
+        next: (response) => {
+          if (!response.body) {
+            this.pageExportError.set('PDF-Export konnte nicht erstellt werden.');
+            return;
+          }
+
+          this.downloadPdf(
+            response.body,
+            readFilenameFromDisposition(response.headers.get('content-disposition')) ??
+              `${slugifyDownloadName(page.title)}.pdf`,
+          );
+        },
+        error: () => {
+          this.pageExportError.set('PDF-Export konnte nicht erstellt werden.');
+        },
+      });
+  }
+
   protected deleteActivePage(): void {
     const page = this.store.activePage();
     if (!page) return;
@@ -297,6 +333,11 @@ export class ShellComponent implements OnDestroy {
   protected openSettings(): void {
     this.closeMobileNavigation();
     this.settingsOpen.set(true);
+  }
+
+  protected dismissAlert(): void {
+    this.store.dismissError();
+    this.pageExportError.set(null);
   }
 
   protected confirmDelete(): void {
@@ -321,6 +362,15 @@ export class ShellComponent implements OnDestroy {
     this.editMode.set(false);
     this.showNewPage.set(false);
     void this.router.navigate(nextPageId ? ['/pages', nextPageId] : ['/']);
+  }
+
+  private downloadPdf(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   @HostListener('document:keydown.escape')
@@ -414,6 +464,34 @@ function countDescendantSpaces(space: SpaceWithPagesResponse): number {
 
 function getSpaceTreeIds(space: SpaceWithPagesResponse): string[] {
   return [space.id, ...space.children.flatMap((child) => getSpaceTreeIds(child))];
+}
+
+function readFilenameFromDisposition(disposition: string | null): string | null {
+  if (!disposition) return null;
+
+  const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encodedMatch?.[1]) {
+    try {
+      return decodeURIComponent(encodedMatch[1]);
+    } catch {
+      return null;
+    }
+  }
+
+  const match = disposition.match(/filename="([^"]+)"/i);
+  return match?.[1] ?? null;
+}
+
+function slugifyDownloadName(title: string): string {
+  return (
+    title
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || 'seite'
+  );
 }
 
 function removeSpaceIds(

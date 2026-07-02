@@ -17,6 +17,7 @@ export const appConfig = registerAs('app', () => ({
   redisHost: process.env['REDIS_HOST'] ?? 'localhost',
   redisPort: Number(process.env['REDIS_PORT'] ?? 6379),
   gotenbergUrl: process.env['GOTENBERG_URL'] ?? 'http://localhost:3002',
+  frontendExportBaseUrl: process.env['FRONTEND_EXPORT_BASE_URL'] ?? 'http://localhost:4200',
   previewConversionTimeoutMs: Number(process.env['PREVIEW_CONVERSION_TIMEOUT_MS'] ?? 120_000),
   maxPreviewBytes: Number(process.env['MAX_PREVIEW_BYTES'] ?? 100 * 1024 * 1024),
   previewWorkerConcurrency: Number(process.env['PREVIEW_WORKER_CONCURRENCY'] ?? 1),

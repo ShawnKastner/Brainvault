@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api-url.token';
@@ -28,6 +28,13 @@ export class PagesApiService {
 
   replace(id: string, request: UpdatePageRequest): Observable<PageResponse> {
     return this.http.put<PageResponse>(`${this.apiUrl}/pages/${id}`, request);
+  }
+
+  exportPdf(id: string): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.apiUrl}/pages/${encodeURIComponent(id)}/export/pdf`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
   }
 
   remove(id: string): Observable<void> {

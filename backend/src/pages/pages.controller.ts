@@ -11,6 +11,7 @@ import {
   Post,
   Put,
   Query,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -24,11 +25,15 @@ import { PagesService } from './pages.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { PageResponseDto } from './dto/page-response.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
+import { PagesPdfExportService } from './pages-pdf-export.service';
 
 @ApiTags('pages')
 @Controller('pages')
 export class PagesController {
-  constructor(private readonly pagesService: PagesService) {}
+  constructor(
+    private readonly pagesService: PagesService,
+    private readonly pdfExportService: PagesPdfExportService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Pages laden (optional nach spaceId filtern)' })
@@ -36,6 +41,18 @@ export class PagesController {
   @ApiOkResponse({ type: [PageResponseDto] })
   findAll(@Query('spaceId', new ParseUUIDPipe({ optional: true })) spaceId?: string): Promise<PageResponseDto[]> {
     return this.pagesService.findAll(spaceId);
+  }
+
+  @Get(':id/export/pdf')
+  @ApiOperation({ summary: 'Page als PDF exportieren' })
+  @ApiOkResponse({ description: 'PDF-Export der Page.' })
+  async exportPdf(@Param('id', new ParseUUIDPipe()) id: string): Promise<StreamableFile> {
+    const pdf = await this.pdfExportService.exportPage(id);
+    return new StreamableFile(pdf.buffer, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="${pdf.filename}"`,
+      length: pdf.buffer.length,
+    });
   }
 
   @Get(':id')

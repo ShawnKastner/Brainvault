@@ -1,0 +1,43 @@
+<main class="pdf-export">
+  @if (page(); as page) {
+    <article class="pdf-document">
+      <div class="pdf-meta">
+        <span>BrainVault</span>
+        <span>{{ formatDate(page.updatedAt) }}</span>
+      </div>
+
+      <h1 class="pdf-title">{{ page.title }}</h1>
+
+      @if (page.description) {
+        <p class="pdf-description">{{ page.description }}</p>
+      }
+
+      @if (page.content) {
+        <div
+          class="pdf-body"
+          [innerHTML]="page | pageContent"
+          [bvRenderMermaid]="mermaidRenderTrigger()"
+          (bvRenderMermaidComplete)="handleMermaidComplete()"
+        ></div>
+      } @else {
+        <p class="pdf-empty">Noch kein Inhalt.</p>
+      }
+
+      @if (page.tags.length > 0) {
+        <div class="pdf-tags">
+          @for (tag of page.tags; track tag) {
+            <span>{{ tag }}</span>
+          }
+        </div>
+      }
+    </article>
+  } @else if (error(); as message) {
+    <article class="pdf-document">
+      <p class="pdf-empty">{{ message }}</p>
+    </article>
+  } @else {
+    <article class="pdf-document">
+      <p class="pdf-empty">Seite wird geladen...</p>
+    </article>
+  }
+</main>

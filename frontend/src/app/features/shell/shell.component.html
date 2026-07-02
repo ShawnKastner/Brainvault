@@ -45,21 +45,23 @@
       [activePage]="store.activePage()"
       [editMode]="editMode()"
       [saving]="store.saving()"
+      [exportingPdf]="exportingPdf()"
       [storageActive]="storageActive()"
       [compactLayout]="compactLayout()"
       [mobileNavOpen]="mobileNavOpen()"
       (toggleMobileNav)="toggleMobileNavigation()"
       (showCreatePage)="showNewPage.set(!showNewPage())"
       (startEdit)="editMode.set(true)"
+      (exportPdf)="exportActivePagePdf()"
       (deletePage)="deleteActivePage()"
       (cancelEdit)="editMode.set(false)"
       (savePage)="savePageFromTopbar()"
     />
 
-    @if (store.error(); as error) {
+    @if (appError(); as error) {
       <div class="app-alert" role="alert">
         <span>{{ error }}</span>
-        <button type="button" class="button" (click)="store.dismissError()">Schliessen</button>
+        <button type="button" class="button" (click)="dismissAlert()">Schliessen</button>
       </div>
     }
 

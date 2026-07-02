@@ -39,6 +39,30 @@ describe(GotenbergClientService.name, () => {
     );
   });
 
+  it('converts frontend export URLs with Chromium and waits for the ready signal', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(Buffer.from('%PDF-1.7\nexport'), {
+        status: 200,
+        headers: { 'content-type': 'application/pdf' },
+      }),
+    );
+
+    await expect(service.convertUrlToPdf('http://frontend/export/pages/page-1')).resolves.toEqual(
+      Buffer.from('%PDF-1.7\nexport'),
+    );
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    const form = init?.body as FormData;
+
+    expect(url).toBe('http://localhost:3002/forms/chromium/convert/url');
+    expect(form.get('url')).toBe('http://frontend/export/pages/page-1');
+    expect(form.get('paperWidth')).toBe('8.27');
+    expect(form.get('paperHeight')).toBe('11.69');
+    expect(form.get('preferCssPageSize')).toBe('true');
+    expect(form.get('printBackground')).toBe('true');
+    expect(form.get('waitForExpression')).toContain('window.__brainvaultPdfReady === true');
+  });
+
   it('maps password-protected conversion failures', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(
       new Response('document is password protected', { status: 400 }),

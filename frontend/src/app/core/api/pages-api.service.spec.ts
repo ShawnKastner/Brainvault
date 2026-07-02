@@ -39,4 +39,15 @@ describe(PagesApiService.name, () => {
     expect(request.request.method).toBe('PATCH');
     request.flush({});
   });
+
+  it('downloads page PDF exports as blobs', () => {
+    service.exportPdf('page 1').subscribe((response) => {
+      expect(response.body?.type).toBe('application/pdf');
+    });
+
+    const request = http.expectOne('/api/pages/page%201/export/pdf');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.responseType).toBe('blob');
+    request.flush(new Blob(['%PDF-1.7'], { type: 'application/pdf' }));
+  });
 });
