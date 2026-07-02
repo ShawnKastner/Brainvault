@@ -40,9 +40,11 @@ services:
       - "--api-timeout=120s"
     environment:
       HOME: /tmp
+      LIBREOFFICE_DENY_PRIVATE_IPS: "true"
+      LIBREOFFICE_DENY_PUBLIC_IPS: "true"
     networks:
-      - default
       - conversion
+      - export
     read_only: true
     tmpfs:
       - /tmp:size=256m
@@ -88,6 +90,9 @@ services:
       CORS_ORIGINS: http://localhost:4200,http://localhost
     volumes:
       - uploads:/app/uploads
+    networks:
+      - default
+      - conversion
     depends_on:
       db:
         condition: service_healthy
@@ -146,6 +151,9 @@ services:
     restart: unless-stopped
     ports:
       - "4200:80"
+    networks:
+      - default
+      - export
     depends_on:
       backend:
         condition: service_healthy
@@ -162,4 +170,6 @@ volumes:
 
 networks:
   conversion:
+    internal: true
+  export:
     internal: true
