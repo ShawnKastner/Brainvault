@@ -190,6 +190,10 @@
   box-shadow: inset 3px 0 0 var(--color-accent);
 }
 
+.nav-section-header.dragging {
+  opacity: 0.45;
+}
+
 .nav-section-expander {
   align-items: center;
   border-radius: var(--radius-sm);
@@ -208,11 +212,14 @@
 
 .nav-section-link {
   align-items: center;
+  cursor: grab;
   display: flex;
   flex: 1;
   gap: 0.4rem;
   min-width: 0;
   padding: 0.1rem 0;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .nav-section-link:hover .nav-section-label,
@@ -308,7 +315,8 @@
 }
 
 .nav.dragging,
-.nav.dragging .nav-item {
+.nav.dragging .nav-item,
+.nav.dragging .nav-section-link {
   cursor: grabbing;
 }
 
@@ -373,6 +381,29 @@
   flex: 0 0 auto;
   height: 0.85rem;
   width: 0.85rem;
+}
+
+.space-root-drop-target {
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin: 0.35rem 0.75rem;
+  padding: 0.5rem 0.65rem;
+  text-align: center;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.space-root-drop-target.drop-target {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.space-root-drop-target.disabled {
+  opacity: 0.45;
 }
 
 .nav-empty {

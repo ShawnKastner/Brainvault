@@ -65,6 +65,7 @@ class KnowledgeBaseStoreStub {
   readonly createPage = jasmine.createSpy('createPage');
   readonly updatePage = jasmine.createSpy('updatePage');
   readonly movePageToSpace = jasmine.createSpy('movePageToSpace');
+  readonly moveSpaceToParent = jasmine.createSpy('moveSpaceToParent');
   readonly deletePage = jasmine.createSpy('deletePage');
   readonly dismissError = jasmine.createSpy('dismissError');
 
@@ -195,6 +196,7 @@ describe(ShellComponent.name, () => {
             (createSpace)="createSpace($event)"
             (deleteSpace)="requestDeleteSpace($event)"
             (movePageToSpace)="movePageToSpace($event)"
+            (moveSpace)="moveSpace($event)"
             (openSettings)="openSettings()"
             (dismiss)="closeMobileNavigation()"
           />
@@ -258,6 +260,24 @@ describe(ShellComponent.name, () => {
 
     expect(shell(fixture).openSpaces()).toEqual({});
     expect(window.localStorage.getItem(SIDEBAR_CLOSED_SPACES_STORAGE_KEY)).toBeNull();
+  });
+
+  it('opens the target parent and forwards space moves to the store', () => {
+    window.localStorage.setItem(
+      SIDEBAR_CLOSED_SPACES_STORAGE_KEY,
+      JSON.stringify(['space-target']),
+    );
+    store.spaces.set([
+      createSpaceFixture({ id: 'space-source' }),
+      createSpaceFixture({ id: 'space-target', sortOrder: 1 }),
+    ]);
+    const fixture = createShell();
+
+    shell(fixture).moveSpace({ spaceId: 'space-source', targetParentId: 'space-target' });
+    fixture.detectChanges();
+
+    expect(store.moveSpaceToParent).toHaveBeenCalledWith('space-source', 'space-target');
+    expect(shell(fixture).openSpaces()).toEqual({});
   });
 
   it('removes deleted spaces and descendants from persisted overrides', () => {
@@ -400,6 +420,7 @@ describe(ShellComponent.name, () => {
     settingsOpen: () => boolean;
     toggleSpace: (spaceId: string) => void;
     selectPage: (pageId: string) => void;
+    moveSpace: (request: { spaceId: string; targetParentId: string | null }) => void;
     requestDeleteSpace: (space: SpaceWithPagesResponse) => void;
     confirmDelete: () => void;
   } {
@@ -410,6 +431,7 @@ describe(ShellComponent.name, () => {
       settingsOpen: () => boolean;
       toggleSpace: (spaceId: string) => void;
       selectPage: (pageId: string) => void;
+      moveSpace: (request: { spaceId: string; targetParentId: string | null }) => void;
       requestDeleteSpace: (space: SpaceWithPagesResponse) => void;
       confirmDelete: () => void;
     };
