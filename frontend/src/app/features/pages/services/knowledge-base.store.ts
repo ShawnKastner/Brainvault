@@ -204,6 +204,45 @@ export class KnowledgeBaseStore {
       .subscribe();
   }
 
+  moveSpaceToParent(spaceId: string, targetParentId: string | null): void {
+    const currentSpaces = this.spaces();
+    const currentSpace = findSpace(currentSpaces, spaceId);
+    const targetPath = targetParentId ? findSpacePath(currentSpaces, targetParentId) : null;
+
+    if (
+      !currentSpace ||
+      currentSpace.parentId === targetParentId ||
+      targetParentId === spaceId ||
+      (targetParentId !== null &&
+        (!targetPath || targetPath.some((space) => space.id === spaceId)))
+    ) {
+      return;
+    }
+
+    const preferredPageId = this.activePageId();
+    const preferredSpaceId = this.activeSpaceId();
+    this.saving.set(true);
+    this.error.set(null);
+
+    this.spacesApi
+      .update(spaceId, { parentId: targetParentId })
+      .pipe(
+        switchMap(() => this.spacesApi.getAll()),
+        tap((spaces) => {
+          if (preferredPageId) {
+            this.applySpaces(spaces, { preferredPageId });
+          } else if (preferredSpaceId) {
+            this.applySpaces(spaces, { preferredSpaceId });
+          } else {
+            this.applySpaces(spaces);
+          }
+        }),
+        this.catchStoreError('Der Space konnte nicht verschoben werden.'),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe();
+  }
+
   deletePage(id: string, onDeleted?: (nextPageId: string | null) => void): void {
     this.saving.set(true);
     this.error.set(null);

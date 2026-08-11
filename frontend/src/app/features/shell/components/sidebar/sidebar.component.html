@@ -43,7 +43,11 @@
     <span>Storage</span>
   </button>
 
-  <nav class="nav" [class.dragging]="draggingPage() !== null" aria-label="Spaces und Seiten">
+  <nav
+    class="nav"
+    [class.dragging]="draggingPage() !== null || draggingSpace() !== null"
+    aria-label="Spaces und Seiten"
+  >
     @if (loading()) {
       <bv-loading-state />
     } @else {
@@ -54,6 +58,17 @@
         ></ng-container>
       } @else {
         <p class="nav-empty root">Noch keine Spaces vorhanden.</p>
+      }
+
+      @if (draggingSpace(); as draggedSpace) {
+        <div
+          class="space-root-drop-target"
+          data-space-root-drop-target
+          [class.drop-target]="rootDropTarget()"
+          [class.disabled]="draggedSpace.parentId === null"
+        >
+          Auf oberste Ebene verschieben
+        </div>
       }
 
       <button type="button" class="new-space-button" (click)="startCreateSpace()">
@@ -77,6 +92,7 @@
           data-space-drop-target
           [attr.data-space-id]="space.id"
           [class.drop-target]="dropTargetSpaceId() === space.id"
+          [class.dragging]="draggingSpace()?.spaceId === space.id"
           [class.active]="activeSpaceId() === space.id && activePageId() === null"
           [style.padding-left.rem]="0.55 + depth * 0.75"
         >
@@ -102,6 +118,7 @@
             type="button"
             class="nav-section-link"
             (click)="selectSpaceFromClick(space.id, $event)"
+            (pointerdown)="startSpacePointer(space, $event)"
           >
             <span class="nav-dot" [style.background]="space.color"></span>
             <span class="nav-section-label">{{ space.name }}</span>
@@ -182,10 +199,17 @@
       [style.top.px]="preview.y"
       aria-hidden="true"
     >
-      <svg class="drag-preview-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-        <rect x="2" y="1" width="12" height="14" rx="2" />
-        <path d="M5 5h6M5 8h6M5 11h3" />
-      </svg>
+      @if (preview.kind === 'space') {
+        <svg class="drag-preview-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2.5 4.5h11v8.2a1.3 1.3 0 0 1-1.3 1.3H3.8a1.3 1.3 0 0 1-1.3-1.3z" />
+          <path d="M4.1 2h3l1.2 1.4h3.6a1.6 1.6 0 0 1 1.6 1.6v1H2.5V3.6A1.6 1.6 0 0 1 4.1 2z" />
+        </svg>
+      } @else {
+        <svg class="drag-preview-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="1" width="12" height="14" rx="2" />
+          <path d="M5 5h6M5 8h6M5 11h3" />
+        </svg>
+      }
       <span>{{ preview.title }}</span>
     </div>
   }

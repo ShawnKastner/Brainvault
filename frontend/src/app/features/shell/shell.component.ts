@@ -29,7 +29,11 @@ import {
   type RenameSpaceRequest,
 } from '../spaces/components/space-overview/space-overview.component';
 import { StorageComponent } from '../storage/components/storage/storage.component';
-import { SidebarComponent, type MovePageToSpaceRequest } from './components/sidebar/sidebar.component';
+import {
+  SidebarComponent,
+  type MovePageToSpaceRequest,
+  type MoveSpaceRequest,
+} from './components/sidebar/sidebar.component';
 import { TopbarComponent } from './components/topbar/topbar.component';
 
 type DeleteDialog =
@@ -247,6 +251,13 @@ export class ShellComponent implements OnDestroy {
   protected movePageToSpace(request: MovePageToSpaceRequest): void {
     this.openSpacePath(request.targetSpaceId);
     this.store.movePageToSpace(request.pageId, request.targetSpaceId);
+  }
+
+  protected moveSpace(request: MoveSpaceRequest): void {
+    if (request.targetParentId) {
+      this.openSpacePath(request.targetParentId);
+    }
+    this.store.moveSpaceToParent(request.spaceId, request.targetParentId);
   }
 
   protected renameSpace(request: RenameSpaceRequest): void {

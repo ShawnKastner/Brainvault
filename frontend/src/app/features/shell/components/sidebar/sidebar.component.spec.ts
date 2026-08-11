@@ -203,6 +203,101 @@ describe(SidebarComponent.name, () => {
     expect(selected).toEqual(['space-2']);
   });
 
+  it('keeps short clicks as space selection', () => {
+    const selected: string[] = [];
+    fixture.componentRef.setInput('spaces', [sourceSpace]);
+    fixture.componentInstance.selectSpace.subscribe((value) => selected.push(value));
+    fixture.detectChanges();
+
+    spaceLink('space-1').click();
+
+    expect(selected).toEqual(['space-1']);
+  });
+
+  it('moves a long-pressed space under another space', fakeAsync(() => {
+    const moved: unknown[] = [];
+    fixture.componentRef.setInput('spaces', [sourceSpace, targetSpace]);
+    fixture.componentInstance.moveSpace.subscribe((value) => moved.push(value));
+    fixture.detectChanges();
+
+    spyOn(document, 'elementFromPoint').and.returnValue(spaceHeader('space-2'));
+
+    spaceLink('space-1').dispatchEvent(pointerEvent('pointerdown'));
+    tick(450);
+    window.dispatchEvent(pointerEvent('pointerup'));
+    tick();
+
+    expect(moved).toEqual([{ spaceId: 'space-1', targetParentId: 'space-2' }]);
+  }));
+
+  it('moves a nested space back to the root drop target', fakeAsync(() => {
+    const moved: unknown[] = [];
+    fixture.componentRef.setInput('spaces', [
+      {
+        ...targetSpace,
+        children: [{ ...sourceSpace, parentId: 'space-2' }],
+      },
+    ]);
+    fixture.componentInstance.moveSpace.subscribe((value) => moved.push(value));
+    fixture.detectChanges();
+
+    spyOn(document, 'elementFromPoint').and.callFake(() => rootDropZone());
+
+    spaceLink('space-1').dispatchEvent(pointerEvent('pointerdown'));
+    tick(450);
+    fixture.detectChanges();
+    window.dispatchEvent(pointerEvent('pointerup'));
+    tick();
+
+    expect(moved).toEqual([{ spaceId: 'space-1', targetParentId: null }]);
+  }));
+
+  it('does not move a space onto itself, its current parent, or a descendant', fakeAsync(() => {
+    const moved: unknown[] = [];
+    const child = { ...targetSpace, parentId: 'space-1' };
+    fixture.componentRef.setInput('spaces', [{ ...sourceSpace, children: [child] }]);
+    fixture.componentInstance.moveSpace.subscribe((value) => moved.push(value));
+    fixture.detectChanges();
+
+    const elementFromPoint = spyOn(document, 'elementFromPoint');
+
+    elementFromPoint.and.returnValue(spaceHeader('space-1'));
+    spaceLink('space-1').dispatchEvent(pointerEvent('pointerdown'));
+    tick(450);
+    window.dispatchEvent(pointerEvent('pointerup'));
+    tick();
+
+    elementFromPoint.and.returnValue(spaceHeader('space-2'));
+    spaceLink('space-1').dispatchEvent(pointerEvent('pointerdown'));
+    tick(450);
+    window.dispatchEvent(pointerEvent('pointerup'));
+    tick();
+
+    elementFromPoint.and.returnValue(spaceHeader('space-1'));
+    spaceLink('space-2').dispatchEvent(pointerEvent('pointerdown'));
+    tick(450);
+    window.dispatchEvent(pointerEvent('pointerup'));
+    tick();
+
+    expect(moved).toEqual([]);
+  }));
+
+  it('does not move a space when dropped outside a valid target', fakeAsync(() => {
+    const moved: unknown[] = [];
+    fixture.componentRef.setInput('spaces', [sourceSpace, targetSpace]);
+    fixture.componentInstance.moveSpace.subscribe((value) => moved.push(value));
+    fixture.detectChanges();
+
+    spyOn(document, 'elementFromPoint').and.returnValue(null);
+
+    spaceLink('space-1').dispatchEvent(pointerEvent('pointerdown'));
+    tick(450);
+    window.dispatchEvent(pointerEvent('pointerup'));
+    tick();
+
+    expect(moved).toEqual([]);
+  }));
+
   it('does not move a page before the long-press delay', fakeAsync(() => {
     const moved: unknown[] = [];
     fixture.componentRef.setInput('spaces', [sourceSpace, targetSpace]);
@@ -303,6 +398,14 @@ describe(SidebarComponent.name, () => {
 
   function spaceHeader(spaceId: string): HTMLElement {
     return fixture.nativeElement.querySelector(`[data-space-id="${spaceId}"]`) as HTMLElement;
+  }
+
+  function spaceLink(spaceId: string): HTMLButtonElement {
+    return spaceHeader(spaceId).querySelector('.nav-section-link') as HTMLButtonElement;
+  }
+
+  function rootDropZone(): HTMLElement | null {
+    return fixture.nativeElement.querySelector('[data-space-root-drop-target]') as HTMLElement | null;
   }
 });
 

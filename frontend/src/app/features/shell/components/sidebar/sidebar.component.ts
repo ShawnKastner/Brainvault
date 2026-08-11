@@ -18,7 +18,13 @@ export interface MovePageToSpaceRequest {
   targetSpaceId: string;
 }
 
+export interface MoveSpaceRequest {
+  spaceId: string;
+  targetParentId: string | null;
+}
+
 interface PendingPageDrag {
+  kind: 'page';
   pageId: string;
   sourceSpaceId: string;
   title: string;
@@ -27,7 +33,21 @@ interface PendingPageDrag {
   y: number;
 }
 
+interface PendingSpaceDrag {
+  kind: 'space';
+  spaceId: string;
+  parentId: string | null;
+  descendantIds: string[];
+  title: string;
+  pointerId: number;
+  x: number;
+  y: number;
+}
+
+type PendingDrag = PendingPageDrag | PendingSpaceDrag;
+
 interface DragPreview {
+  kind: PendingDrag['kind'];
   title: string;
   x: number;
   y: number;
@@ -65,19 +85,22 @@ export class SidebarComponent implements OnDestroy {
   readonly createSpace = output<CreateSpaceRequest>();
   readonly deleteSpace = output<SpaceWithPagesResponse>();
   readonly movePageToSpace = output<MovePageToSpaceRequest>();
+  readonly moveSpace = output<MoveSpaceRequest>();
   readonly openSettings = output<void>();
   readonly dismiss = output<void>();
 
   readonly showNewSpace = signal(false);
   readonly draggingPage = signal<PendingPageDrag | null>(null);
+  readonly draggingSpace = signal<PendingSpaceDrag | null>(null);
   readonly dragPreview = signal<DragPreview | null>(null);
   readonly dropTargetSpaceId = signal<string | null>(null);
+  readonly rootDropTarget = signal(false);
   readonly spaceForm = this.formBuilder.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     color: ['#378ADD', Validators.required],
   });
 
-  private pendingDrag: PendingPageDrag | null = null;
+  private pendingDrag: PendingDrag | null = null;
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressNextClick = false;
 
@@ -135,7 +158,14 @@ export class SidebarComponent implements OnDestroy {
     this.deleteSpace.emit(space);
   }
 
-  selectSpaceFromClick(spaceId: string, event: Event): void {
+  selectSpaceFromClick(spaceId: string, event: MouseEvent): void {
+    if (this.suppressNextClick) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.suppressNextClick = false;
+      return;
+    }
+
     event.stopPropagation();
     this.selectSpace.emit(spaceId);
   }
@@ -155,6 +185,7 @@ export class SidebarComponent implements OnDestroy {
     if (!this.canStartPageDrag(event)) return;
 
     this.pendingDrag = {
+      kind: 'page',
       pageId: page.id,
       sourceSpaceId,
       title: page.title,
@@ -165,11 +196,35 @@ export class SidebarComponent implements OnDestroy {
 
     this.addPointerListeners();
     this.longPressTimer = setTimeout(() => {
-      this.beginPageDrag();
+      this.beginDrag();
+    }, SidebarComponent.longPressDelayMs);
+  }
+
+  startSpacePointer(space: SpaceWithPagesResponse, event: PointerEvent): void {
+    if (!this.canStartDrag(event)) return;
+
+    this.pendingDrag = {
+      kind: 'space',
+      spaceId: space.id,
+      parentId: space.parentId,
+      descendantIds: getDescendantSpaceIds(space),
+      title: space.name,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    };
+
+    this.addPointerListeners();
+    this.longPressTimer = setTimeout(() => {
+      this.beginDrag();
     }, SidebarComponent.longPressDelayMs);
   }
 
   private canStartPageDrag(event: PointerEvent): boolean {
+    return this.canStartDrag(event);
+  }
+
+  private canStartDrag(event: PointerEvent): boolean {
     return (
       this.pendingDrag === null &&
       event.isPrimary &&
@@ -179,7 +234,7 @@ export class SidebarComponent implements OnDestroy {
     );
   }
 
-  private beginPageDrag(): void {
+  private beginDrag(): void {
     if (!this.pendingDrag) return;
     if (this.saving() || this.dragDisabled()) {
       this.finishPointerInteraction();
@@ -187,8 +242,13 @@ export class SidebarComponent implements OnDestroy {
     }
 
     this.suppressNextClick = true;
-    this.draggingPage.set(this.pendingDrag);
+    if (this.pendingDrag.kind === 'page') {
+      this.draggingPage.set(this.pendingDrag);
+    } else {
+      this.draggingSpace.set(this.pendingDrag);
+    }
     this.dragPreview.set({
+      kind: this.pendingDrag.kind,
       title: this.pendingDrag.title,
       x: this.pendingDrag.x,
       y: this.pendingDrag.y,
@@ -205,10 +265,11 @@ export class SidebarComponent implements OnDestroy {
       y: event.clientY,
     };
 
-    if (!this.draggingPage()) return;
+    if (!this.draggingPage() && !this.draggingSpace()) return;
 
     event.preventDefault();
     this.dragPreview.set({
+      kind: this.pendingDrag.kind,
       title: this.pendingDrag.title,
       x: event.clientX,
       y: event.clientY,
@@ -220,6 +281,7 @@ export class SidebarComponent implements OnDestroy {
     if (!this.pendingDrag || this.pendingDrag.pointerId !== event.pointerId) return;
 
     const draggedPage = this.draggingPage();
+    const draggedSpace = this.draggingSpace();
     if (draggedPage) {
       event.preventDefault();
       this.updateDropTarget(event.clientX, event.clientY);
@@ -227,23 +289,64 @@ export class SidebarComponent implements OnDestroy {
       if (targetSpaceId && targetSpaceId !== draggedPage.sourceSpaceId) {
         this.movePageToSpace.emit({ pageId: draggedPage.pageId, targetSpaceId });
       }
+    } else if (draggedSpace) {
+      event.preventDefault();
+      this.updateDropTarget(event.clientX, event.clientY);
+      const targetParentId = this.rootDropTarget() ? null : this.dropTargetSpaceId();
+      if (this.isValidSpaceTarget(draggedSpace, targetParentId)) {
+        this.moveSpace.emit({ spaceId: draggedSpace.spaceId, targetParentId });
+      }
     }
 
-    this.finishPointerInteraction(draggedPage !== null);
+    this.finishPointerInteraction(draggedPage !== null || draggedSpace !== null);
   }
 
   private cancelPointerInteraction(event: PointerEvent): void {
     if (!this.pendingDrag || this.pendingDrag.pointerId !== event.pointerId) return;
 
-    this.finishPointerInteraction(this.draggingPage() !== null);
+    this.finishPointerInteraction(this.draggingPage() !== null || this.draggingSpace() !== null);
   }
 
   private updateDropTarget(x: number, y: number): void {
-    const sourceSpaceId = this.draggingPage()?.sourceSpaceId;
-    const element = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-space-drop-target]');
+    const draggedPage = this.draggingPage();
+    const draggedSpace = this.draggingSpace();
+    const element = document
+      .elementFromPoint(x, y)
+      ?.closest<HTMLElement>('[data-space-drop-target], [data-space-root-drop-target]');
+
+    if (draggedSpace) {
+      const rootTarget = element?.hasAttribute('data-space-root-drop-target') === true;
+      this.rootDropTarget.set(rootTarget && draggedSpace.parentId !== null);
+
+      if (rootTarget) {
+        this.dropTargetSpaceId.set(null);
+        return;
+      }
+
+      const targetSpaceId = element?.dataset['spaceId'] ?? null;
+      this.dropTargetSpaceId.set(
+        this.isValidSpaceTarget(draggedSpace, targetSpaceId) ? targetSpaceId : null,
+      );
+      return;
+    }
+
+    this.rootDropTarget.set(false);
+    const sourceSpaceId = draggedPage?.sourceSpaceId;
     const targetSpaceId = element?.dataset['spaceId'] ?? null;
 
     this.dropTargetSpaceId.set(targetSpaceId && targetSpaceId !== sourceSpaceId ? targetSpaceId : null);
+  }
+
+  private isValidSpaceTarget(
+    draggedSpace: PendingSpaceDrag,
+    targetParentId: string | null,
+  ): boolean {
+    if (targetParentId === null) return draggedSpace.parentId !== null && this.rootDropTarget();
+    return (
+      targetParentId !== draggedSpace.spaceId &&
+      targetParentId !== draggedSpace.parentId &&
+      !draggedSpace.descendantIds.includes(targetParentId)
+    );
   }
 
   private addPointerListeners(): void {
@@ -266,8 +369,10 @@ export class SidebarComponent implements OnDestroy {
 
     this.pendingDrag = null;
     this.draggingPage.set(null);
+    this.draggingSpace.set(null);
     this.dragPreview.set(null);
     this.dropTargetSpaceId.set(null);
+    this.rootDropTarget.set(false);
     this.removePointerListeners();
 
     if (dragWasActive) {
@@ -276,4 +381,8 @@ export class SidebarComponent implements OnDestroy {
       });
     }
   }
+}
+
+function getDescendantSpaceIds(space: SpaceWithPagesResponse): string[] {
+  return space.children.flatMap((child) => [child.id, ...getDescendantSpaceIds(child)]);
 }

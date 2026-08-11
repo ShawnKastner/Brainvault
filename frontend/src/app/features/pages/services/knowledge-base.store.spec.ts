@@ -336,4 +336,72 @@ describe(KnowledgeBaseStore.name, () => {
     expect(store.activePageId()).toBe('page-2');
     expect(store.saving()).toBeFalse();
   });
+
+  it('moves a space under another space and keeps the active space selected', () => {
+    const movedSpace = { ...spacesForMove[0], parentId: 'space-2' };
+    const updatedSpaces = [
+      {
+        ...spacesForMove[1],
+        children: [movedSpace],
+      },
+    ];
+    store.spaces.set(spacesForMove);
+    store.selectSpace('space-1');
+    spacesApi.update.and.returnValue(of(movedSpace));
+    spacesApi.getAll.and.returnValue(of(updatedSpaces));
+
+    store.moveSpaceToParent('space-1', 'space-2');
+
+    expect(spacesApi.update).toHaveBeenCalledWith('space-1', { parentId: 'space-2' });
+    expect(store.spaces()).toEqual(updatedSpaces);
+    expect(store.activeSpace()?.id).toBe('space-1');
+    expect(store.activeSpacePath().map((space) => space.id)).toEqual(['space-2', 'space-1']);
+    expect(store.saving()).toBeFalse();
+  });
+
+  it('moves a nested space back to the root while keeping its active page selected', () => {
+    const nestedSource = { ...spacesForMove[0], parentId: 'space-2' };
+    const nestedSpaces = [{ ...spacesForMove[1], children: [nestedSource] }];
+    const rootSource = { ...nestedSource, parentId: null };
+    const updatedSpaces = [{ ...spacesForMove[1], children: [] }, rootSource];
+    store.spaces.set(nestedSpaces);
+    store.selectPage('page-1');
+    spacesApi.update.and.returnValue(of(rootSource));
+    spacesApi.getAll.and.returnValue(of(updatedSpaces));
+
+    store.moveSpaceToParent('space-1', null);
+
+    expect(spacesApi.update).toHaveBeenCalledWith('space-1', { parentId: null });
+    expect(store.activePageId()).toBe('page-1');
+    expect(store.activeSpace()?.id).toBe('space-1');
+  });
+
+  it('does not call the API for unchanged or cyclic space moves', () => {
+    const child = createSpaceFixture({
+      id: 'space-child',
+      parentId: 'space-1',
+    });
+    store.spaces.set([{ ...spaces[0], children: [child] }]);
+
+    store.moveSpaceToParent('space-1', null);
+    store.moveSpaceToParent('space-1', 'space-1');
+    store.moveSpaceToParent('space-1', 'space-child');
+    store.moveSpaceToParent('space-child', 'space-1');
+
+    expect(spacesApi.update).not.toHaveBeenCalled();
+    expect(store.saving()).toBeFalse();
+  });
+
+  it('reports errors when a space move fails', () => {
+    store.spaces.set(spacesForMove);
+    store.selectSpace('space-1');
+    spacesApi.update.and.returnValue(throwError(() => new Error('failed')));
+
+    store.moveSpaceToParent('space-1', 'space-2');
+
+    expect(spacesApi.getAll).not.toHaveBeenCalled();
+    expect(store.error()).toBe('Der Space konnte nicht verschoben werden.');
+    expect(store.activeSpace()?.id).toBe('space-1');
+    expect(store.saving()).toBeFalse();
+  });
 });
